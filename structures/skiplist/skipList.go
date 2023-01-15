@@ -1,6 +1,9 @@
 package structures
 
-import "math/rand"
+import (
+	"fmt"
+	"math/rand"
+)
 
 type SkipL interface {
 	Add()
@@ -53,10 +56,10 @@ func (s *SkipList) Add(key string, element []byte, stat int) {
 	}
 }
 
-func (s *SkipList) Delete(key string) bool {
+func (s *SkipList) Delete(key string) {
 	pronadjen, node := s.Found(key)
 	if !pronadjen || key == "" {
-		return false
+		return
 	}
 	bef := node.prev
 	for i := 0; i < len(node.next); {
@@ -80,18 +83,19 @@ func (s *SkipList) Delete(key string) bool {
 			break
 		}
 	}
-	return true
 }
 
 func (s *SkipList) Found(key string) (bool, *SkipListNode) {
+	pronadjen := false
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
 	for i := s.height; i >= 0; {
 		if node.next[i] != nil {
 			if node.next[i].key < key {
 				node = *node.next[i]
 			} else if node.next[i].key == key {
+				pronadjen = true
 				node = *node.next[i]
-				return true, &node
+				break
 			} else {
 				i--
 			}
@@ -99,7 +103,7 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 			i--
 		}
 	}
-	return false, nil
+	return pronadjen, &node
 }
 
 func (s *SkipList) Update(key string, element []byte, stat int) bool {
@@ -109,9 +113,8 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 			if node.next[i].key < key {
 				node = *node.next[i]
 			} else if node.next[i].key == key {
-				node = *node.next[i]
-				node.value = element
-				node.status = stat
+				node.next[i].value = element
+				node.next[i].status = stat
 				return true
 			} else {
 				i--
@@ -143,10 +146,20 @@ func (s *SkipList) roll() int {
 
 func main() {
 	sl := Create(32, 0, 0)
-	sl.Add("kljuc", []byte("proba"))
-	sl.Add("kljuc2", []byte("proba2"))
-	sl.Add("kljuc3", []byte("proba3"))
-	sl.Add("kljuc1", []byte("proba1"))
-	sl.Add("kljuc2", []byte("proba2"))
+	sl.Add("kljuc", []byte("proba"), 0)
+	sl.Add("kljuc2", []byte("proba2"), 0)
+	sl.Add("kljuc3", []byte("proba3"), 0)
+	sl.Add("kljuc1", []byte("proba1"), 0)
+	sl.Add("kljuc2", []byte("proba2"), 0)
+
+	pr, node := sl.Found("kljuc1")
+	fmt.Println(pr)
+	fmt.Println(node.status)
+	sl.Update("kljuc1", []byte("proba123"), 1)
+
 	sl.Delete("kljuc2")
+
+	pr, node = sl.Found("kljuc1")
+	fmt.Println(pr)
+	fmt.Println(node.status)
 }
