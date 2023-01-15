@@ -1,4 +1,4 @@
-package main
+package structures
 
 import (
 	"crypto/sha1"

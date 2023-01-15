@@ -1,4 +1,4 @@
-package main
+package structures
 
 type BloomFilter interface {
 	Add()

@@ -1,4 +1,4 @@
-package main
+package structures
 
 type CountMinSketch interface {
 	Add()

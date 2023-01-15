@@ -1,4 +1,4 @@
-package main
+package structures
 
 type Memtable struct {
 	data         SkipList
@@ -7,7 +7,7 @@ type Memtable struct {
 }
 
 func CreateMemtable(height int, max_cap uint, stat uint) *Memtable {
-	skip_list := CreateSkipList(height)
+	skip_list := Create(height)
 	memtable := Memtable{*skip_list, 0, stat}
 	return &memtable
 }
@@ -28,7 +28,7 @@ func (memtable *Memtable) Remove(key string) bool {
 }
 
 func (Memtable *Memtable) Find(key string) (found bool, value []byte) {
-	found, element := Memtable.data.Find(key)
+	found, element := Memtable.data.Found(key)
 	if found {
 		if element.status == 0 {
 			return false, nil

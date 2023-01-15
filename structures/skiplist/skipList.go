@@ -1,4 +1,4 @@
-package main
+package structures
 
 import "math/rand"
 
@@ -16,17 +16,18 @@ type SkipList struct {
 }
 
 type SkipListNode struct {
-	key   string
-	value []byte
-	next  []*SkipListNode
-	prev  *SkipListNode
+	key    string
+	value  []byte
+	status int
+	next   []*SkipListNode
+	prev   *SkipListNode
 }
 
 func Create(maxHeight, height, size int) *SkipList {
-	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, next: make([]*SkipListNode, maxHeight), prev: nil}}
+	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil}}
 }
 
-func (s *SkipList) Add(key string, element []byte) {
+func (s *SkipList) Add(key string, element []byte, stat int) {
 	pronadjen, node := s.Found(key)
 	if pronadjen {
 		return
@@ -36,7 +37,7 @@ func (s *SkipList) Add(key string, element []byte) {
 	if r > h {
 		s.height = r
 	}
-	newNode := SkipListNode{key: key, value: element, next: make([]*SkipListNode, r), prev: node}
+	newNode := SkipListNode{key: key, value: element, status: stat, next: make([]*SkipListNode, r), prev: node}
 	for i := 0; i < r; i++ {
 		for i > len(node.next) {
 			if node.prev == nil {
@@ -52,10 +53,10 @@ func (s *SkipList) Add(key string, element []byte) {
 	}
 }
 
-func (s *SkipList) Delete(key string) {
+func (s *SkipList) Delete(key string) bool {
 	pronadjen, node := s.Found(key)
 	if !pronadjen || key == "" {
-		return
+		return false
 	}
 	bef := node.prev
 	for i := 0; i < len(node.next); {
@@ -79,19 +80,18 @@ func (s *SkipList) Delete(key string) {
 			break
 		}
 	}
+	return true
 }
 
 func (s *SkipList) Found(key string) (bool, *SkipListNode) {
-	pronadjen := false
-	node := SkipListNode{s.head.key, s.head.value, s.head.next, nil}
+	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
 	for i := s.height; i >= 0; {
 		if node.next[i] != nil {
 			if node.next[i].key < key {
 				node = *node.next[i]
 			} else if node.next[i].key == key {
-				pronadjen = true
 				node = *node.next[i]
-				break
+				return true, &node
 			} else {
 				i--
 			}
@@ -99,7 +99,28 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 			i--
 		}
 	}
-	return pronadjen, &node
+	return false, nil
+}
+
+func (s *SkipList) Update(key string, element []byte, stat int) bool {
+	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
+	for i := s.height; i >= 0; {
+		if node.next[i] != nil {
+			if node.next[i].key < key {
+				node = *node.next[i]
+			} else if node.next[i].key == key {
+				node = *node.next[i]
+				node.value = element
+				node.status = stat
+				return true
+			} else {
+				i--
+			}
+		} else {
+			i--
+		}
+	}
+	return false
 }
 
 func (s *SkipList) roll() int {
