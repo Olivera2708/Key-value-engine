@@ -61,8 +61,6 @@ func Init_WAL(ss uint, lwm int) *WAL {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//mozda treba sortirati segments?
-	//ili ce vec biti sortirani kako se citaju? proveriti
 
 	return &WAL{ss, segments, lwm}
 }
