@@ -131,7 +131,7 @@ func WriteInFile(mr *MerkleRoot, path string) {
 	}
 }
 
-func main() {
+func main6() {
 	all_data := [][]byte{{97, 93}, {47, 12}, {97, 93}, {47, 12}, {97, 93}, {47, 12}}
 
 	mr := CreateMerkleTree(all_data)

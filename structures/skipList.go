@@ -1,7 +1,6 @@
 package structures
 
 import (
-	"fmt"
 	"math/rand"
 )
 
@@ -26,7 +25,7 @@ type SkipListNode struct {
 	prev   *SkipListNode
 }
 
-func Create(maxHeight, height, size int) *SkipList {
+func CreateSkipList(maxHeight, height, size int) *SkipList {
 	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil}}
 }
 
@@ -56,10 +55,10 @@ func (s *SkipList) Add(key string, element []byte, stat int) {
 	}
 }
 
-func (s *SkipList) Delete(key string) {
+func (s *SkipList) Delete(key string) bool {
 	pronadjen, node := s.Found(key)
 	if !pronadjen || key == "" {
-		return
+		return false
 	}
 	bef := node.prev
 	for i := 0; i < len(node.next); {
@@ -83,16 +82,17 @@ func (s *SkipList) Delete(key string) {
 			break
 		}
 	}
+	return true
 }
 
 func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 	pronadjen := false
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
-	for i := s.height; i >= 0; {
+	for i := s.height - 1; i >= 0; { //stavili smo -1
 		if node.next[i] != nil {
 			if node.next[i].key < key {
 				node = *node.next[i]
-			} else if node.next[i].key == key {
+			} else if node.next[i].key == key && node.status == 0 {
 				pronadjen = true
 				node = *node.next[i]
 				break
@@ -142,24 +142,4 @@ func (s *SkipList) roll() int {
 		s.height = level
 	}
 	return level
-}
-
-func main() {
-	sl := Create(32, 0, 0)
-	sl.Add("kljuc", []byte("proba"), 0)
-	sl.Add("kljuc2", []byte("proba2"), 0)
-	sl.Add("kljuc3", []byte("proba3"), 0)
-	sl.Add("kljuc1", []byte("proba1"), 0)
-	sl.Add("kljuc2", []byte("proba2"), 0)
-
-	pr, node := sl.Found("kljuc1")
-	fmt.Println(pr)
-	fmt.Println(node.status)
-	sl.Update("kljuc1", []byte("proba123"), 1)
-
-	sl.Delete("kljuc2")
-
-	pr, node = sl.Found("kljuc1")
-	fmt.Println(pr)
-	fmt.Println(node.status)
 }

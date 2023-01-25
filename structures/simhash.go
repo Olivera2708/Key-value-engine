@@ -67,7 +67,7 @@ func ParseText(filename string, simhash SimHash) map[string]int {
 
 func HashWords(words map[string]int) map[int]string {
 	hash := make(map[int]string)
-	for i, _ := range words {
+	for i := range words {
 		hash[words[i]] = ToBinary((GetMD5Hash(i)))
 	}
 	return hash
@@ -122,11 +122,4 @@ func ToBinary(s string) string {
 		res = fmt.Sprintf("%s%.8b", res, c)
 	}
 	return res
-}
-
-func main() {
-	sh := CreateSimHash()
-	t1 := CreateText("tekst1.txt", sh)
-	t2 := CreateText("tekst2.txt", sh)
-	fmt.Println(sh.Hemingvej(t1, t2))
 }

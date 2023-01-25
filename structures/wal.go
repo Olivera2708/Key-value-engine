@@ -1,4 +1,4 @@
-package main
+package structures
 
 import (
 	"encoding/binary"
@@ -27,7 +27,7 @@ import (
 */
 
 const (
-	DIRNAME         = "/wal/"
+	DIRNAME         = "data/wal"
 	CIFARA_U_NAZIVU = 5 //kod imenovanja segmenata
 
 	CRC_SIZE        = 4
@@ -55,7 +55,7 @@ type WAL struct {
 }
 
 // mozda provera da li je direktorijum prazan, da onda napravi prvi segmnet koji ce biti prazan fajl?
-func Init_WAL(ss uint, lwm int) *WAL {
+func CreateWAL(ss uint, lwm int) *WAL {
 	//iscita segmente=fajlove i da ubaci pokazivace u segments
 	segments, err := ioutil.ReadDir(DIRNAME)
 	if err != nil {
@@ -65,7 +65,7 @@ func Init_WAL(ss uint, lwm int) *WAL {
 	return &WAL{ss, segments, lwm}
 }
 
-func broj_zapisa_u_segmentu(filename string) uint {
+func IsFull(filename string) uint {
 	file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -137,8 +137,8 @@ func (wal *WAL) Add(key string, val string) {
 	s := wal.segments[n-1]
 
 	//proveri da li ima slobodnog mesta
-	if wal.segment_size == broj_zapisa_u_segmentu(s.Name()) {
-		rbr, err := strconv.ParseUint(s.Name()[4:10], 10, 32) //kako radi sjasing stringa ovde????
+	if wal.segment_size == IsFull(DIRNAME+"/"+s.Name()) {
+		rbr, err := strconv.ParseUint(DIRNAME+"/"+s.Name()[4:10], 10, 32) //kako radi sjasing stringa ovde????
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -149,30 +149,29 @@ func (wal *WAL) Add(key string, val string) {
 		}
 
 		new_file_name := "wal_" + broj + ".log"
-		s, err := os.OpenFile(new_file_name, os.O_CREATE, 0666) //dozvole
+		s, err := os.OpenFile(DIRNAME+"/"+new_file_name, os.O_CREATE, 0666) //dozvole
 		s.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
 		ss := make([]fs.FileInfo, 1)
-		ss[0], _ = os.Stat(s.Name())
+		ss[0], _ = os.Stat(DIRNAME + "/" + s.Name())
 		wal.segments = append(wal.segments, ss...)
 	}
 	n = len(wal.segments)
 	s = wal.segments[n-1]
 
-	file, err := os.OpenFile(s.Name(), os.O_APPEND, 0644) //dozvole?
+	file, err := os.OpenFile(DIRNAME+"/"+s.Name(), os.O_RDWR, 0666) //dozvole?
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
-
 	//dodas zapis na kraj poslednjeg segmenta i upises promene u fajlu
+	file.Seek(0, 2)
 	_, err = file.Write(data)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func (wal *WAL) ReadAll() {

@@ -1,5 +1,7 @@
 package structures
 
+import "math"
+
 type CountMinSketch interface {
 	Add()
 	Query()
@@ -14,13 +16,13 @@ type CMS struct {
 	hashF   []HashWithSeed
 }
 
-func Create(p float64, d float64) *CMS {
-	m := CalculateM(p)
-	k := CalculateK(d)
+func CreateCMS(p float64, d float64) *CMS {
+	m := CalculateMC(p)
+	k := CalculateKC(d)
 	hashF := CreateHashFunctions(k)
 
 	set := make([][]int, k)
-	for i, _ := range set {
+	for i := range set {
 		set[i] = make([]int, m)
 	}
 
@@ -48,4 +50,12 @@ func (cms *CMS) Query(elem string) int {
 		}
 	}
 	return min
+}
+
+func CalculateMC(epsilon float64) uint {
+	return uint(math.Ceil(math.E / epsilon))
+}
+
+func CalculateKC(delta float64) uint {
+	return uint(math.Ceil(math.Log(math.E / delta)))
 }

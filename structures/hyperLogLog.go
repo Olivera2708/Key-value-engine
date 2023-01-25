@@ -1,9 +1,6 @@
-package main
+package structures
 
 import (
-	"crypto/md5"
-	"encoding/hex"
-	"fmt"
 	"math"
 )
 
@@ -24,7 +21,7 @@ type HLL struct {
 	reg []uint8
 }
 
-func Create(p uint8) HLL {
+func CreateHLL(p uint8) HLL {
 	m := int(math.Pow(2, float64(p)))
 	return HLL{uint64(m), p, make([]uint8, m, m)}
 }
@@ -49,18 +46,18 @@ func (hll *HLL) Add(rec string) {
 	}
 }
 
-func GetMD5Hash(text string) string {
-	hash := md5.Sum([]byte(text))
-	return hex.EncodeToString(hash[:])
-}
+// func GetMD5Hash(text string) string {
+// 	hash := md5.Sum([]byte(text))
+// 	return hex.EncodeToString(hash[:])
+// }
 
-func ToBinary(s string) string {
-	res := ""
-	for _, c := range s {
-		res = fmt.Sprintf("%s%.8b", res, c)
-	}
-	return res
-}
+// func ToBinary(s string) string {
+// 	res := ""
+// 	for _, c := range s {
+// 		res = fmt.Sprintf("%s%.8b", res, c)
+// 	}
+// 	return res
+// }
 
 func (hll *HLL) Estimate() float64 {
 	sum := 0.0
@@ -89,22 +86,4 @@ func (hll *HLL) emptyCount() int {
 		}
 	}
 	return sum
-}
-
-func main() {
-	hll := Create(2)
-	hll.Add("Pera")
-	hll.Add("Mika")
-	hll.Add("Zika")
-	hll.Add("Djordje")
-	hll.Add("Nikola")
-	hll.Add("Slavica")
-	hll.Add("Jovanka")
-	hll.Add("Radojka")
-	hll.Add("Ispitivanja")
-	hll.Add("otorinolaringolog")
-	hll.Add("azbuka")
-	hll.Add(".34")
-	hll.Add("4.12")
-	fmt.Println(hll.Estimate())
 }

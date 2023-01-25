@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"log"
 	"os"
+	"strconv"
 )
 
 const (
@@ -18,7 +19,7 @@ type SSTable struct {
 }
 
 func CreateSSTable(memtable *Memtable, generation int) *SSTable {
-	path := "usertable-" + string(generation)
+	path := "data/sstables/usertable-" + strconv.FormatInt(int64(generation), 10)
 
 	outFile, err := os.Create(path + "-data.db")
 	if err != nil {
@@ -57,8 +58,6 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 		if tombstone > 0 {
 			tombstone = 1
 		}
-		tombstone1 := make([]byte, 1, 1)
-		binary.LittleEndian.PutUint32(tombstone1, tombstone)
 
 		key1 := []byte(key)
 
@@ -72,7 +71,7 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 
 		fileWriter.Write(crc1)
 		fileWriter.Write(timeStamp1)
-		fileWriter.Write(tombstone1)
+		fileWriter.WriteByte(uint8(tombstone))
 		fileWriter.Write(keySize1)
 		fileWriter.Write(valueSize1)
 		fileWriter.Write(key1)
