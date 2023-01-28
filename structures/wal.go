@@ -57,6 +57,10 @@ func CreateWAL(ss uint, lwm int) *WAL {
 		if err != nil {
 			log.Fatal(err)
 		}
+		segments, err = os.ReadDir(DIRNAME)
+		if err != nil {
+			log.Fatal(err)
+		}
 		file.Close()
 	} else if err != nil {
 		log.Fatal(err)
@@ -113,8 +117,12 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) {
 	val_size := make([]byte, VALUE_SIZE_SIZE)
 	binary.LittleEndian.PutUint64(val_size, val_len)
 
-	timestamp := make([]byte, TIMESTAMP_SIZE)
-	binary.LittleEndian.PutUint16(timestamp, uint16(time.Now().Unix()))
+	//time := time.Now().Format("DD-MM-YYYY HH:mm")
+	//timestamp := []byte(time)
+	t := time.Now()
+	timestamp := make([]byte, 16)
+	binary.LittleEndian.PutUint64(timestamp[0:8], uint64(t.Unix()))
+	binary.LittleEndian.PutUint64(timestamp[8:16], uint64(t.Nanosecond()))
 
 	tombstone := make([]byte, 1)
 	tombstone[0] = flag
@@ -245,13 +253,13 @@ func (wal *WAL) Flush() {
 		new := make([]fs.DirEntry, wal.low_water_mark)
 
 		j := 0
-		for i := wal.low_water_mark - 1; i < n; i++ {
+		for i := n - wal.low_water_mark; i < n; i++ {
 			new[j] = wal.segments[i]
 			j++
 		}
 
 		//obrise suvisne
-		for i := 0; i < wal.low_water_mark-1; i++ {
+		for i := 0; i < n-wal.low_water_mark; i++ {
 			err := os.Remove(DIRNAME + "/" + wal.segments[i].Name())
 			if err != nil {
 				log.Fatal(err)

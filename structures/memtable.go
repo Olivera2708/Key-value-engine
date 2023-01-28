@@ -12,8 +12,8 @@ func CreateMemtable(height int, max_cap uint, stat int) *Memtable {
 	return &memtable
 }
 
-func (memtable *Memtable) Add(key string, value []byte, stat int) {
-	memtable.data.Add(key, value, stat)
+func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp string) {
+	memtable.data.Add(key, value, stat, timestamp)
 	memtable.capacity++
 }
 
@@ -44,7 +44,6 @@ func (memtable *Memtable) Flush(generation *int) {
 		CreateSSTable(memtable, *generation)
 		*generation++
 		memtable.capacity = 0
-		skip_list := CreateSkipList(memtable.data.maxHeight-1, 0, 0)
-		memtable.data = *skip_list
+		memtable.data = *CreateSkipList(memtable.data.maxHeight, 1, 0) //obrisali -1 za maxh
 	}
 }

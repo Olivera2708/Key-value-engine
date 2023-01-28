@@ -18,18 +18,19 @@ type SkipList struct {
 }
 
 type SkipListNode struct {
-	key    string
-	value  []byte
-	status int
-	next   []*SkipListNode
-	prev   *SkipListNode
+	key       string
+	value     []byte
+	status    int
+	next      []*SkipListNode
+	prev      *SkipListNode
+	timestamp string
 }
 
 func CreateSkipList(maxHeight, height, size int) *SkipList {
-	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil}}
+	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil, timestamp: ""}}
 }
 
-func (s *SkipList) Add(key string, element []byte, stat int) {
+func (s *SkipList) Add(key string, element []byte, stat int, timestamp string) {
 	pronadjen, node := s.Found(key)
 	if pronadjen {
 		return
@@ -39,9 +40,9 @@ func (s *SkipList) Add(key string, element []byte, stat int) {
 	if r > h {
 		s.height = r
 	}
-	newNode := SkipListNode{key: key, value: element, status: stat, next: make([]*SkipListNode, r), prev: node}
-	for i := 0; i < r; i++ {
-		for i > len(node.next) {
+	newNode := SkipListNode{key: key, value: element, status: stat, next: make([]*SkipListNode, r), prev: node, timestamp: timestamp}
+	for i := 0; i < r; i++ { //!!!
+		for i >= len(node.next) {
 			if node.prev == nil {
 				break
 			}
@@ -87,7 +88,7 @@ func (s *SkipList) Delete(key string) bool {
 
 func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 	pronadjen := false
-	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
+	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
 	for i := s.height - 1; i >= 0; { //stavili smo -1
 		if node.next[i] != nil {
 			if node.next[i].key < key {
@@ -107,7 +108,7 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 }
 
 func (s *SkipList) Update(key string, element []byte, stat int) bool {
-	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil}
+	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
 	for i := s.height; i >= 0; {
 		if node.next[i] != nil {
 			if node.next[i].key < key {
