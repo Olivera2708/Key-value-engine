@@ -7,14 +7,18 @@ import (
 
 func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int) {
 	key := ""
-	fmt.Print("Unesite ključ -> ")
-	fmt.Scanln(&key)
+	for key == "" {
+		fmt.Print("Unesite ključ -> ")
+		fmt.Scanln(&key)
+	}
 
 	var value []byte
-	fmt.Print("Unesite vrednost -> ")
-	fmt.Scanln(&value)
+	for len(value) == 0 {
+		fmt.Print("Unesite vrednost -> ")
+		fmt.Scanln(&value)
+	}
 
-	wal.Add(key, string(value))
+	wal.Add(key, value, 0)
 	mem.Add(key, value, 0) //0 znaci da je aktivan
 
 	elem := structures.Element{Key: key, Element: value}

@@ -3,7 +3,10 @@ package structures
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/gob"
+	"fmt"
 	"math"
+	"os"
 	"time"
 )
 
@@ -20,6 +23,7 @@ type BloomF struct {
 	hashF []HashWithSeed
 }
 
+// n je koliko ce biti elemenata, p tacnost
 func CreateBloomFilter(n uint, p float64) *BloomF {
 	m := CalculateM(int(n), p)
 	k := CalculateK(int(n), m)
@@ -75,4 +79,34 @@ func CalculateM(expectedElements int, falsePositiveRate float64) uint {
 
 func CalculateK(expectedElements int, m uint) uint {
 	return uint(math.Ceil((float64(m) / float64(expectedElements)) * math.Log(2)))
+}
+
+func (bloomF *BloomF) Write(path string) {
+	file, err := os.OpenFile(path+"-filter.db", os.O_CREATE|os.O_WRONLY, 0666)
+	defer file.Close()
+	if err != nil {
+		panic(err)
+	}
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(bloomF)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Read(path string) *BloomF {
+	file, err := os.OpenFile(path+"-filter.db", os.O_RDWR, 0666)
+	defer file.Close()
+
+	decoder := gob.NewDecoder(file)
+	var srs = new(BloomF)
+	for {
+		err = decoder.Decode(srs)
+		if err != nil {
+			break
+		}
+		fmt.Println(*srs)
+	}
+
+	return srs
 }

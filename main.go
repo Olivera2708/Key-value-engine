@@ -12,6 +12,7 @@ func main() {
 	mem := structures.CreateMemtable(5, 5, 0)
 	cache := structures.CreateLRU(14)
 	generation := 0
+	//ovo sve treba iz config fajla da se cita
 
 	fmt.Println("-----------------------------------------------")
 	fmt.Println("|                   OPCIJE                    |")
@@ -41,5 +42,7 @@ func main() {
 		default:
 			fmt.Println("Pogrešan unos")
 		}
+
+		a = ""
 	}
 }

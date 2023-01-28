@@ -32,16 +32,15 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 	currentPos := 0
 
 	keys := make([]string, 0)
-	values := make([][]byte, 0)
+	// values := make([][]byte, 0)
 	positions := make([]int, 0)
 
 	for node := memtable.data.head.next[0]; node != nil; node = node.next[0] {
-
 		key := node.key
 		keys = append(keys, key)
 
 		value := node.value
-		values = append(values, value)
+		// values = append(values, value)
 
 		positions = append(positions, currentPos)
 
@@ -76,13 +75,21 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 		fileWriter.Write(valueSize1)
 		fileWriter.Write(key1)
 		fileWriter.Write(value)
+		fileWriter.Flush()
 
 		currentPos += 37 + int(len(key1)) + int(len(value))
-
 	}
 
+	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+	for i := 0; i < len(keys); i++ {
+		bf.Add(keys[i])
+	}
+
+	bf.Write(path)
 	index := CreateIndex(keys, positions, path)
 	sstable := SSTable{path: path, index: index}
+	CreateTOC(&sstable)
+
 	return &sstable
 }
 
@@ -125,6 +132,7 @@ func CreateIndex(keys []string, positions []int, path string) *Index {
 		fileWriter.Write(keySize1)
 		fileWriter.Write(key1)
 		fileWriter.Write(pos1)
+		fileWriter.Flush()
 
 		currentPos += len([]byte(keys[i])) + 4
 	}
@@ -166,6 +174,7 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 			fileWriter.Write(keySize1)
 			fileWriter.Write(key1)
 			fileWriter.Write(posSum1)
+			fileWriter.Flush()
 		}
 	}
 	fileWriter.Write([]byte(keysSum[len(keysSum)-2]))
@@ -189,6 +198,7 @@ func CreateTOC(sstable *SSTable) {
 	fileWriter.WriteString(sstable.path + "-data.db\n")
 	fileWriter.WriteString(sstable.path + "-index.db\n")
 	fileWriter.WriteString(sstable.path + "-summary.db\n")
+	fileWriter.Flush()
 
 	return
 }
