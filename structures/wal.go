@@ -287,6 +287,10 @@ func (wal *WAL) Flush() {
 				log.Fatal(err)
 			}
 		}
-		wal.segments = new
+		segmenti, err := os.ReadDir(DIRNAME)
+		if err != nil {
+			log.Fatal(err)
+		}
+		wal.segments = segmenti
 	}
 }

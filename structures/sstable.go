@@ -5,13 +5,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"log"
 	"os"
 	"strconv"
 )
 
 const (
-	SUMMARY_BLOCKING_FACTOR = 20 // promeniti da bude iz config fajla
+	SUMMARY_BLOCKING_FACTOR = 10 // promeniti da bude iz config fajla
 )
 
 type SSTable struct {
@@ -201,7 +202,16 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 	return &summary
 }
 
+func CheckBloomF(path string, key string) bool {
+	bf := Read(path)
+	return bf.Query(key)
+}
+
 func ReadSummary(path string, key string) (bool, []byte) {
+	if !CheckBloomF(path, key) {
+		return false, nil
+	}
+
 	startLen := make([]byte, 8)
 	endLen := make([]byte, 8)
 	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
@@ -221,7 +231,12 @@ func ReadSummary(path string, key string) (bool, []byte) {
 		position := make([]byte, 8)
 		for true {
 			keyLen := make([]byte, 8)
-			file.Read(keyLen)
+			_, err = file.Read(keyLen)
+			if err == io.EOF {
+				pos := binary.LittleEndian.Uint64(position)
+				found, value := ReadIndex(path, key, pos)
+				return found, value
+			}
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
@@ -237,6 +252,7 @@ func ReadSummary(path string, key string) (bool, []byte) {
 				found, value := ReadIndex(path, key, pos)
 				return found, value
 			}
+			// file.Seek(8, 1)
 			file.Read(position)
 		}
 	}
@@ -244,7 +260,7 @@ func ReadSummary(path string, key string) (bool, []byte) {
 }
 
 func ReadIndex(path string, key string, position uint64) (bool, []byte) {
-	fmt.Println("Indeks")
+	fmt.Println("Indeks -> ", path)
 	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal(err)

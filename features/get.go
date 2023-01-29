@@ -7,11 +7,11 @@ import (
 )
 
 func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF) []byte {
-	key := "4"
-	// for key == "" {
-	// 	fmt.Print("Unesite ključ -> ")
-	// 	fmt.Scanln(&key)
-	// }
+	key := ""
+	for key == "" {
+		fmt.Print("Unesite ključ -> ")
+		fmt.Scanln(&key)
+	}
 	found, value := mem.Find(key)
 	if found {
 		return value
@@ -35,7 +35,9 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 			break
 		}
 		found, value = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(i), key)
-		return value
+		if found {
+			return value
+		}
 	}
 	return nil
 }

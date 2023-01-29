@@ -49,12 +49,13 @@ func (lruc *LRUCache) Add(elem Element) {
 	}
 }
 
-func (lruc *LRUCache) Delete(el Element) {
+func (lruc *LRUCache) Delete(el Element) bool {
 	found, elem := lruc.Found(el)
 	if found {
 		lruc.lista.Remove(elem)
 		delete(lruc.mapa, el.Key)
 	}
+	return found
 }
 
 func (lruc *LRUCache) Move(elem *list.Element, val []byte) {

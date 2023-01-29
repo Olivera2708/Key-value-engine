@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/gob"
-	"fmt"
 	"math"
 	"os"
 	"time"
@@ -105,9 +104,7 @@ func Read(path string) *BloomF {
 		if err != nil {
 			break
 		}
-		fmt.Println(*srs)
 	}
-
 	return srs
 }
 
