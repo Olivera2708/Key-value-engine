@@ -110,3 +110,33 @@ func Read(path string) *BloomF {
 
 	return srs
 }
+
+func (bf *BloomF) WriteGlobal() {
+	file, err := os.OpenFile("data/bloomf.db", os.O_CREATE|os.O_WRONLY, 0666)
+	defer file.Close()
+	if err != nil {
+		panic(err)
+	}
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(bf)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ReadAll() *BloomF {
+	file, err := os.OpenFile("data/bloomf.db", os.O_CREATE|os.O_RDWR, 0666)
+	defer file.Close()
+
+	decoder := gob.NewDecoder(file)
+	var srs = new(BloomF)
+	for {
+		err = decoder.Decode(srs)
+		if err != nil {
+			break
+		}
+		fmt.Println(*srs)
+	}
+
+	return srs
+}

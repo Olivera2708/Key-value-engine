@@ -14,7 +14,7 @@ import (
 
 /*
    +---------------+-----------------+---------------+---------------+-----------------+-...-+--...--+
-   |    CRC (4B)   | Timestamp (16B) | Tombstone(1B) | Key Size (8B) | Value Size (8B) | Key | Value |
+   |    CRC (4B)   | Timestamp (8B) | Tombstone(1B) | Key Size (8B) | Value Size (8B) | Key | Value |
    +---------------+-----------------+---------------+---------------+-----------------+-...-+--...--+
 */
 
@@ -23,7 +23,7 @@ const (
 	CIFARA_U_NAZIVU = 5 //kod imenovanja segmenata
 
 	CRC_SIZE        = 4
-	TIMESTAMP_SIZE  = 16
+	TIMESTAMP_SIZE  = 8
 	TOMBSTONE_SIZE  = 1
 	KEY_SIZE_SIZE   = 8
 	VALUE_SIZE_SIZE = 8
@@ -105,7 +105,7 @@ func NumberOfRecords(filename string) uint {
 	return k
 }
 
-func (wal *WAL) Add(key string, valb []byte, flag byte) {
+func (wal *WAL) Add(key string, valb []byte, flag byte) uint64 {
 
 	//zapis pravis po formatu gore
 	keyb := []byte(key)
@@ -119,10 +119,9 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) {
 
 	//time := time.Now().Format("DD-MM-YYYY HH:mm")
 	//timestamp := []byte(time)
-	t := time.Now()
-	timestamp := make([]byte, 16)
-	binary.LittleEndian.PutUint64(timestamp[0:8], uint64(t.Unix()))
-	binary.LittleEndian.PutUint64(timestamp[8:16], uint64(t.Nanosecond()))
+	t := time.Now().Unix()
+	timestamp := make([]byte, 8)
+	binary.LittleEndian.PutUint64(timestamp, uint64(t))
 
 	tombstone := make([]byte, 1)
 	tombstone[0] = flag
@@ -134,6 +133,7 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) {
 	record = append(record, valb...)
 
 	crc := CRC32(record)
+	// fmt.Println(crc)
 	data := make([]byte, CRC_SIZE)
 	binary.LittleEndian.PutUint32(data, uint32(crc))
 	data = append(data, record...) // kreiran je zapis
@@ -179,12 +179,13 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	return uint64(t)
 }
 
-func (wal *WAL) ReadAll() {
+func (wal *WAL) ReadAll(mem Memtable) {
 	//ucitava redom segmente i ispisuje sadrzaj
 	crcb := make([]byte, CRC_SIZE)
-	time := make([]byte, TIMESTAMP_SIZE)
+	time2 := make([]byte, TIMESTAMP_SIZE)
 	tomb := make([]byte, TOMBSTONE_SIZE)
 	ksb := make([]byte, KEY_SIZE_SIZE)
 	vsb := make([]byte, VALUE_SIZE_SIZE)
@@ -209,13 +210,18 @@ func (wal *WAL) ReadAll() {
 				log.Fatal(err_kraj)
 			}
 			crc := binary.LittleEndian.Uint32(crcb)
-
-			file.Read(time)
+			// fmt.Println("CRC: ", crc)
+			file.Read(time2)
+			time1 := binary.LittleEndian.Uint64(time2)
+			// fmt.Println(time.Unix(int64(time1), 0))
 			file.Read(tomb)
+			// fmt.Println(tomb)
 			file.Read(ksb)
 			key_size := binary.LittleEndian.Uint64(ksb)
+			// fmt.Println(key_size)
 			file.Read(vsb)
 			val_size := binary.LittleEndian.Uint64(vsb)
+			// fmt.Println(val_size)
 
 			key := make([]byte, key_size)
 			file.Read(key)
@@ -223,23 +229,25 @@ func (wal *WAL) ReadAll() {
 			file.Read(val)
 
 			//
-			fmt.Println(key)
-			fmt.Println(val)
-			fmt.Println()
+			// fmt.Println("Key: ", string(key))
+			// fmt.Println("Val: ", string(val))
+			// fmt.Println()
 			//dodati sta se radi sa procitanim podacima
 			//ispisuje samo kljuc i vrednost radi provere
 
+			mem.Add(string(key), val, int(tomb[0]), time1)
 			//provera crc?
-			data := make([]byte, TIMESTAMP_SIZE+TOMBSTONE_SIZE+
-				KEY_SIZE_SIZE+VALUE_SIZE_SIZE+key_size+val_size)
+			// data := make([]byte, TIMESTAMP_SIZE+TOMBSTONE_SIZE+
+			// 	KEY_SIZE_SIZE+VALUE_SIZE_SIZE+key_size+val_size)
 
-			data = append(data, time...)
-			data = append(data, tomb...)
+			data := append(time2, tomb...)
 			data = append(data, ksb...)
 			data = append(data, vsb...)
 			data = append(data, key...)
 			data = append(data, val...)
 
+			// fmt.Println(crc)
+			// fmt.Println(CRC32(data))
 			if crc != CRC32(data) {
 				fmt.Println("Korumpirani podaci")
 			}

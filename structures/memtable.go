@@ -12,9 +12,11 @@ func CreateMemtable(height int, max_cap uint, stat int) *Memtable {
 	return &memtable
 }
 
-func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp string) {
-	memtable.data.Add(key, value, stat, timestamp)
-	memtable.capacity++
+func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp uint64) {
+	new := memtable.data.Add(key, value, stat, timestamp)
+	if new {
+		memtable.capacity++
+	}
 }
 
 func (memtable *Memtable) Update(key string, value []byte, stat int) bool {

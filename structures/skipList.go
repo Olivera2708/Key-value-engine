@@ -23,17 +23,18 @@ type SkipListNode struct {
 	status    int
 	next      []*SkipListNode
 	prev      *SkipListNode
-	timestamp string
+	timestamp uint64
 }
 
 func CreateSkipList(maxHeight, height, size int) *SkipList {
-	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil, timestamp: ""}}
+	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil, timestamp: 0}}
 }
 
-func (s *SkipList) Add(key string, element []byte, stat int, timestamp string) {
+func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) bool {
 	pronadjen, node := s.Found(key)
 	if pronadjen {
-		return
+		s.Update(key, element, stat)
+		return false
 	}
 	h := s.height
 	r := s.roll()
@@ -54,6 +55,7 @@ func (s *SkipList) Add(key string, element []byte, stat int, timestamp string) {
 	if newNode.next[0] != nil {
 		newNode.next[0].prev = &newNode
 	}
+	return true
 }
 
 func (s *SkipList) Delete(key string) bool {
@@ -109,7 +111,7 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 
 func (s *SkipList) Update(key string, element []byte, stat int) bool {
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
-	for i := s.height; i >= 0; {
+	for i := s.height - 1; i >= 0; { //dodali -1
 		if node.next[i] != nil {
 			if node.next[i].key < key {
 				node = *node.next[i]

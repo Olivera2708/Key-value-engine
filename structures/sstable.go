@@ -44,16 +44,12 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 
 		positions = append(positions, currentPos)
 
-		crc := crc32.ChecksumIEEE(value)
-		crc1 := make([]byte, 4, 4)
-
-		binary.LittleEndian.PutUint32(crc1, crc)
-
-		//timeStamp := node.timeStamp
-		timeStamp1 := make([]byte, 16, 16)
+		timeStamp := node.timestamp
+		timeStamp1 := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
 		//copy(timeStamp1, timeStamp)
 
-		tombstone := uint32(node.status)
+		tombstone := uint8(node.status)
 		if tombstone > 0 {
 			tombstone = 1
 		}
@@ -68,6 +64,20 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 		valueSize1 := make([]byte, 8, 8)
 		binary.LittleEndian.PutUint64(valueSize1, valueSize)
 
+		tombstone1 := make([]byte, 1, 1)
+		tombstone1[0] = tombstone
+
+		record := append(timeStamp1, tombstone1...)
+		record = append(record, keySize1...)
+		record = append(record, valueSize1...)
+		record = append(record, key1...)
+		record = append(record, value...)
+
+		crc := crc32.ChecksumIEEE(record)
+		crc1 := make([]byte, 4, 4)
+
+		binary.LittleEndian.PutUint32(crc1, crc)
+
 		fileWriter.Write(crc1)
 		fileWriter.Write(timeStamp1)
 		fileWriter.WriteByte(uint8(tombstone))
@@ -77,7 +87,7 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 		fileWriter.Write(value)
 		fileWriter.Flush()
 
-		currentPos += 37 + int(len(key1)) + int(len(value))
+		currentPos += 29 + int(len(key1)) + int(len(value))
 	}
 
 	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
@@ -159,6 +169,14 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 	defer outFile.Close()
 
 	fileWriter := bufio.NewWriter(outFile)
+	len1 := make([]byte, 8, 8)
+	len2 := make([]byte, 8, 8)
+	binary.LittleEndian.PutUint64(len1, uint64(len(keysSum[len(keysSum)-2])))
+	binary.LittleEndian.PutUint64(len2, uint64(len(keysSum[len(keysSum)-1])))
+	fileWriter.Write(len1)
+	fileWriter.Write([]byte(keysSum[len(keysSum)-2]))
+	fileWriter.Write(len2)
+	fileWriter.Write([]byte(keysSum[len(keysSum)-1]))
 
 	for i := 0; i < len(positionsSum); i += 1 {
 		if i%SUMMARY_BLOCKING_FACTOR == 0 {
@@ -177,11 +195,78 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 			fileWriter.Flush()
 		}
 	}
-	fileWriter.Write([]byte(keysSum[len(keysSum)-2]))
-	fileWriter.Write([]byte(keysSum[len(keysSum)-1]))
 
 	summary := Summary{path: sumPath}
 	return &summary
+}
+
+func ReadSummary(path string, key string) (bool, []byte) {
+	startLen := make([]byte, 8)
+	endLen := make([]byte, 8)
+	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Read(startLen)
+	startL := binary.LittleEndian.Uint64(startLen)
+	startIndex := make([]byte, startL)
+	file.Read(startIndex)
+	file.Read(endLen)
+	endL := binary.LittleEndian.Uint64(endLen)
+	endIndex := make([]byte, endL)
+	file.Read(endIndex)
+	if key >= string(startIndex) && key <= string(endIndex) {
+		position := make([]byte, 8)
+		for true {
+			keyLen := make([]byte, 8)
+			file.Read(keyLen)
+			keyLenNum := binary.LittleEndian.Uint64(keyLen)
+			key1 := make([]byte, keyLenNum)
+			file.Read(key1)
+			if string(key1) > key {
+				file.Seek(-(int64(keyLenNum) + 16), 1)
+				file.Read(position)
+				pos := binary.LittleEndian.Uint64(position)
+				found, value := ReadIndex(path, key, pos)
+				return found, value
+			}
+			file.Seek(8, 1)
+		}
+	}
+	return false, nil
+}
+
+func ReadIndex(path string, key string, position uint64) (bool, []byte) {
+	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Seek(int64(position), 0)
+	position1 := make([]byte, 8)
+	for true {
+		keyLen := make([]byte, 8)
+		file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		if key == string(key1) {
+			file.Read(position1)
+			pos := binary.LittleEndian.Uint64(position1)
+			value := ReadSSTable(path, key, pos)
+			return true, value
+		} else if key < string(key1) {
+			return false, nil
+		}
+		file.Seek(8, 1)
+	}
+	return false, nil
+}
+
+func ReadSSTable(path, key string, position uint64) []byte {
+	//dodati
+	return nil
 }
 
 func CreateTOC(sstable *SSTable) {

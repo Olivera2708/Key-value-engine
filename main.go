@@ -8,8 +8,10 @@ import (
 
 func main() {
 	//inicijalizacija
-	wal := structures.CreateWAL(5, 3)
+	wal := structures.CreateWAL(5, 1)
 	mem := structures.CreateMemtable(5, 5, 0)
+	wal.ReadAll(*mem)
+	bloom := structures.ReadAll()
 	cache := structures.CreateLRU(14)
 	generation := 0
 	//ovo sve treba iz config fajla da se cita
@@ -36,9 +38,11 @@ func main() {
 		case "x":
 			return
 		case "1":
-			features.PUT(wal, mem, cache, &generation)
+			features.PUT(wal, mem, cache, &generation, *bloom)
 		case "2":
 			fmt.Println("AAA")
+		case "3":
+			fmt.Print("Delete")
 		default:
 			fmt.Println("Pogrešan unos")
 		}
