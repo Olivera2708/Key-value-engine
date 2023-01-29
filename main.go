@@ -32,7 +32,8 @@ func main() {
 
 	for true {
 		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+		// fmt.Scanln(&a)
+		a = "3"
 
 		switch a {
 		case "x":
@@ -42,7 +43,12 @@ func main() {
 		case "2":
 			fmt.Println("AAA")
 		case "3":
-			fmt.Print("Delete")
+			value := features.GET(mem, cache, *bloom)
+			if value != nil {
+				fmt.Println("Pronadjen je i vrednost je ", string(value))
+			} else {
+				fmt.Println("Element sa trazenim kljucem nije pronadjen.")
+			}
 		default:
 			fmt.Println("Pogrešan unos")
 		}

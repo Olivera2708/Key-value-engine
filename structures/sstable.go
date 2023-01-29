@@ -3,6 +3,7 @@ package structures
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"hash/crc32"
 	"log"
 	"os"
@@ -230,14 +231,20 @@ func ReadSummary(path string, key string) (bool, []byte) {
 				pos := binary.LittleEndian.Uint64(position)
 				found, value := ReadIndex(path, key, pos)
 				return found, value
+			} else if string(key1) == key {
+				file.Read(position)
+				pos := binary.LittleEndian.Uint64(position)
+				found, value := ReadIndex(path, key, pos)
+				return found, value
 			}
-			file.Seek(8, 1)
+			file.Read(position)
 		}
 	}
 	return false, nil
 }
 
 func ReadIndex(path string, key string, position uint64) (bool, []byte) {
+	fmt.Println("Indeks")
 	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -265,8 +272,23 @@ func ReadIndex(path string, key string, position uint64) (bool, []byte) {
 }
 
 func ReadSSTable(path, key string, position uint64) []byte {
-	//dodati
-	return nil
+	fmt.Println("SStable")
+	file, err := os.OpenFile(path+"-data.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Seek(int64(position)+13, 0)
+	keyLen := make([]byte, 8, 8)
+	file.Read(keyLen)
+	keyLenNum := binary.LittleEndian.Uint64(keyLen)
+	valLen := make([]byte, 8, 8)
+	file.Read(valLen)
+	valLenNum := binary.LittleEndian.Uint64(valLen)
+	file.Seek(int64(keyLenNum), 1)
+	value := make([]byte, valLenNum, valLenNum)
+	file.Read(value)
+	return value
 }
 
 func CreateTOC(sstable *SSTable) {

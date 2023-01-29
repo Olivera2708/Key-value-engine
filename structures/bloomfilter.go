@@ -135,7 +135,6 @@ func ReadAll() *BloomF {
 		if err != nil {
 			break
 		}
-		fmt.Println(*srs)
 	}
 
 	return srs

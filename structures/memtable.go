@@ -32,7 +32,7 @@ func (memtable *Memtable) Update(key string, value []byte, stat int) bool {
 func (Memtable *Memtable) Find(key string) (found bool, value []byte) {
 	found, element := Memtable.data.Found(key)
 	if found {
-		if element.status == 0 {
+		if element.status == 1 {
 			return false, nil
 		} else {
 			return true, element.value
