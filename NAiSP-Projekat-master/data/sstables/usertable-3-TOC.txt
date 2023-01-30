@@ -1,0 +1,4 @@
+data/sstables/usertable-3
+data/sstables/usertable-3-data.db
+data/sstables/usertable-3-index.db
+data/sstables/usertable-3-summary.db
