@@ -5,7 +5,8 @@ import (
 	"fmt"
 )
 
-func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF) {
+func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int) {
+
 	key := ""
 	for key == "" {
 		fmt.Print("Unesite ključ -> ")
@@ -25,7 +26,8 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	elem := structures.Element{Key: key, Element: value}
 	cache.Add(elem)
 
-	mem.Flush(generation)
+	mem.Flush(generation, sstableType)
 	wal.Flush()
 	bloomf.WriteGlobal()
+
 }
