@@ -228,15 +228,12 @@ func (wal *WAL) ReadAll(mem Memtable) {
 			val := make([]byte, val_size)
 			file.Read(val)
 
-			//
 			// fmt.Println("Key: ", string(key))
 			// fmt.Println("Val: ", string(val))
 			// fmt.Println()
-			//dodati sta se radi sa procitanim podacima
-			//ispisuje samo kljuc i vrednost radi provere
 
 			mem.Add(string(key), val, int(tomb[0]), time1)
-			//provera crc?
+			//provera crc
 			// data := make([]byte, TIMESTAMP_SIZE+TOMBSTONE_SIZE+
 			// 	KEY_SIZE_SIZE+VALUE_SIZE_SIZE+key_size+val_size)
 

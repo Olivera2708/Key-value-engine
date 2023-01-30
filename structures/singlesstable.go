@@ -3,26 +3,21 @@ package structures
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"hash/crc32"
-	"io"
 	"log"
+	"math"
 	"os"
 	"strconv"
 )
 
-const (
-	SUMMARY_BLOCKING_FACTOR = 10 // promeniti da bude iz config fajla
-)
-
-type SSTable struct {
-	path  string
-	index *Index
+type SingleSSTable struct {
+	path string
 }
 
-func CreateSSTable(memtable *Memtable, generation int) *SSTable {
-	path := "data/sstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
-
+func CreateSingleSSTable(memtable *Memtable, generation int) *SingleSSTable {
+	path := "data/singlesstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
 	outFile, err := os.Create(path + "-data.db")
 	if err != nil {
 		log.Fatal(err)
@@ -31,24 +26,29 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 
 	fileWriter := bufio.NewWriter(outFile)
 
-	currentPos := 0
+	currentPos := 32
 
 	keys := make([]string, 0)
-	values := make([][]byte, 0)
+	// values := make([][]byte, 0)
 	positions := make([]int, 0)
+
+	initHeader := make([]byte, 32)
+	fileWriter.Write(initHeader)
+	fileWriter.Flush()
 
 	for node := memtable.data.head.next[0]; node != nil; node = node.next[0] {
 		key := node.key
 		keys = append(keys, key)
 
 		value := node.value
-		values = append(values, value)
+		// values = append(values, value)
 
 		positions = append(positions, currentPos)
 
 		timeStamp := node.timestamp
 		timeStamp1 := make([]byte, 8, 8)
 		binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
+		//copy(timeStamp1, timeStamp)
 
 		tombstone := uint8(node.status)
 		if tombstone > 0 {
@@ -91,39 +91,16 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 		currentPos += 29 + int(len(key1)) + int(len(value))
 	}
 
-	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
-	for i := 0; i < len(keys); i++ {
-		bf.Add(keys[i])
-	}
+	outFile.Seek(0, 0)
+	lenBytes := make([]byte, 8, 8)
+	binary.LittleEndian.PutUint64(lenBytes, uint64(len(keys)))
+	fileWriter.Write(lenBytes)
+	posIndex := make([]byte, 8, 8)
+	binary.LittleEndian.PutUint64(posIndex, uint64(currentPos))
+	fileWriter.Write(posIndex)
+	fileWriter.Flush()
+	outFile.Seek(int64(currentPos), 0)
 
-	bf.Write(path)
-	index := CreateIndex(keys, positions, path)
-	sstable := SSTable{path: path, index: index}
-	CreateTOC(&sstable)
-
-	merkle := CreateMerkleTree(values)
-	WriteMerkleInFile(merkle)
-
-	return &sstable
-}
-
-type Index struct {
-	path    string
-	summary *Summary
-}
-
-func CreateIndex(keys []string, positions []int, path string) *Index {
-	indexPath := path + "-index.db"
-
-	outFile, err := os.Create(indexPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer outFile.Close()
-
-	fileWriter := bufio.NewWriter(outFile)
-
-	currentPos := 0
 	keysSum := make([]string, len(keys)+2, len(keys)+2)
 	positionsSum := make([]int, len(keys), len(keys))
 	keySizesSum := make([]int, len(keys), len(keys))
@@ -150,29 +127,17 @@ func CreateIndex(keys []string, positions []int, path string) *Index {
 
 		currentPos += len([]byte(keys[i])) + 16
 	}
+
 	keysSum[len(keys)] = keys[0]
 	keysSum[len(keys)+1] = keys[len(keys)-1]
 
-	summary := CreateSummary(keySizesSum, keysSum, positionsSum, path)
+	outFile.Seek(16, 0)
+	posSum := make([]byte, 8, 8)
+	binary.LittleEndian.PutUint64(posSum, uint64(currentPos))
+	fileWriter.Write(posSum)
+	fileWriter.Flush()
+	outFile.Seek(int64(currentPos), 0)
 
-	index := Index{path: indexPath, summary: summary}
-	return &index
-}
-
-type Summary struct {
-	path string
-}
-
-func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path string) *Summary {
-	sumPath := path + "-summary.db"
-
-	outFile, err := os.Create(sumPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer outFile.Close()
-
-	fileWriter := bufio.NewWriter(outFile)
 	len1 := make([]byte, 8, 8)
 	len2 := make([]byte, 8, 8)
 	binary.LittleEndian.PutUint64(len1, uint64(len(keysSum[len(keysSum)-2])))
@@ -181,6 +146,7 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 	fileWriter.Write([]byte(keysSum[len(keysSum)-2]))
 	fileWriter.Write(len2)
 	fileWriter.Write([]byte(keysSum[len(keysSum)-1]))
+	currentPos += 16 + len([]byte(keysSum[len(keysSum)-2])) + len([]byte(keysSum[len(keysSum)-1]))
 
 	for i := 0; i < len(positionsSum); i += 1 {
 		if i%SUMMARY_BLOCKING_FACTOR == 0 {
@@ -193,6 +159,7 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 			posSum1 := make([]byte, 8, 8)
 			binary.LittleEndian.PutUint64(posSum1, uint64(positionsSum[i]))
 
+			currentPos += 16 + len([]byte(keysSum[i]))
 			fileWriter.Write(keySize1)
 			fileWriter.Write(key1)
 			fileWriter.Write(posSum1)
@@ -200,27 +167,64 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 		}
 	}
 
-	summary := Summary{path: sumPath}
-	return &summary
+	outFile.Seek(24, 0)
+	posBF := make([]byte, 8, 8)
+	binary.LittleEndian.PutUint64(posBF, uint64(currentPos))
+	fileWriter.Write(posBF)
+	fileWriter.Flush()
+	outFile.Seek(int64(currentPos), 0)
+
+	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+	for i := 0; i < len(keys); i++ {
+		bf.Add(keys[i])
+	}
+
+	encoder := gob.NewEncoder(outFile)
+	err = encoder.Encode(bf)
+	if err != nil {
+		panic(err)
+	}
+
+	ssst := SingleSSTable{path}
+	return &ssst
 }
 
-func CheckBloomF(path string, key string) bool {
-	bf := Read(path)
-	return bf.Query(key)
-}
+func ReadSingleSummary(path, key string) (bool, []byte) {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	defer file.Close()
+	lengthBytes := make([]byte, 8, 8)
+	posIndBytes := make([]byte, 8, 8)
+	posSumBytes := make([]byte, 8, 8)
+	posBFBytes := make([]byte, 8, 8)
+	file.Read(lengthBytes)
+	file.Read(posIndBytes)
+	file.Read(posSumBytes)
+	file.Read(posBFBytes)
+	length := binary.LittleEndian.Uint64(lengthBytes)
+	posInd := binary.LittleEndian.Uint64(posIndBytes)
+	posSum := binary.LittleEndian.Uint64(posSumBytes)
+	posBF := binary.LittleEndian.Uint64(posBFBytes)
+	file.Seek(int64(posBF), 0)
 
-func ReadSummary(path string, key string) (bool, []byte) {
-	if !CheckBloomF(path, key) {
+	decoder := gob.NewDecoder(file)
+	var srs = new(BloomF)
+	for {
+		err = decoder.Decode(srs)
+		if err != nil {
+			break
+		}
+	}
+
+	isHere := srs.Query(key)
+	if !isHere {
 		return false, nil
 	}
 
+	file.Seek(int64(posSum), 0)
+
 	startLen := make([]byte, 8)
 	endLen := make([]byte, 8)
-	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+
 	file.Read(startLen)
 	startL := binary.LittleEndian.Uint64(startLen)
 	startIndex := make([]byte, startL)
@@ -231,14 +235,12 @@ func ReadSummary(path string, key string) (bool, []byte) {
 	file.Read(endIndex)
 	if key >= string(startIndex) && key <= string(endIndex) {
 		position := make([]byte, 8)
-		for true {
+		for i := 0; i < int(math.Ceil(float64(length)/float64(SUMMARY_BLOCKING_FACTOR))); i++ {
+
+			//fmt.Print(int(math.Ceil(float64(length) / float64(SUMMARY_BLOCKING_FACTOR))))
+
 			keyLen := make([]byte, 8)
-			_, err = file.Read(keyLen)
-			if err == io.EOF {
-				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
-				return found, value
-			}
+			file.Read(keyLen)
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
@@ -246,28 +248,35 @@ func ReadSummary(path string, key string) (bool, []byte) {
 				file.Seek(-(int64(keyLenNum) + 16), 1)
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
+
+				found, value := ReadSingleIndex(file, key, pos, posInd)
+
 				return found, value
 			} else if string(key1) == key {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
+
+				found, value := ReadSingleIndex(file, key, pos, posInd)
+
 				return found, value
 			}
 			// file.Seek(8, 1)
 			file.Read(position)
+
+			if i == int(math.Ceil(float64(length)/float64(SUMMARY_BLOCKING_FACTOR)))-1 {
+				pos := binary.LittleEndian.Uint64(position)
+				found, value := ReadSingleIndex(file, key, pos, posInd)
+				return found, value
+			}
 		}
 	}
 	return false, nil
+
 }
 
-func ReadIndex(path string, key string, position uint64) (bool, []byte) {
-	fmt.Println("Indeks -> ", path)
-	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, []byte) {
+	fmt.Println("Indeks")
+	file.Seek(int64(posInd), 0) // ups
 	file.Seek(int64(position), 0)
 	position1 := make([]byte, 8)
 	for true {
@@ -279,7 +288,7 @@ func ReadIndex(path string, key string, position uint64) (bool, []byte) {
 		if key == string(key1) {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
-			value := ReadSSTable(path, key, pos)
+			value := ReadSingleSSTable(file, key, pos)
 			return true, value
 		} else if key < string(key1) {
 			return false, nil
@@ -287,16 +296,12 @@ func ReadIndex(path string, key string, position uint64) (bool, []byte) {
 		file.Seek(8, 1)
 	}
 	return false, nil
+
 }
 
-func ReadSSTable(path, key string, position uint64) []byte {
-	fmt.Println("SStable")
-	file, err := os.OpenFile(path+"-data.db", os.O_RDWR, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	file.Seek(int64(position)+13, 0)
+func ReadSingleSSTable(file *os.File, key string, pos uint64) []byte {
+	fmt.Println("Data")
+	file.Seek(int64(pos)+13, 0)
 	keyLen := make([]byte, 8, 8)
 	file.Read(keyLen)
 	keyLenNum := binary.LittleEndian.Uint64(keyLen)
@@ -307,58 +312,4 @@ func ReadSSTable(path, key string, position uint64) []byte {
 	value := make([]byte, valLenNum, valLenNum)
 	file.Read(value)
 	return value
-}
-
-func CreateTOC(sstable *SSTable) {
-	path := sstable.path + "-TOC.txt"
-	inFile, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-	defer inFile.Close()
-
-	fileWriter := bufio.NewWriter(inFile)
-
-	fileWriter.WriteString(sstable.path + "\n")
-	fileWriter.WriteString(sstable.path + "-data.db\n")
-	fileWriter.WriteString(sstable.path + "-index.db\n")
-	fileWriter.WriteString(sstable.path + "-summary.db\n")
-	fileWriter.Flush()
-
-	return
-}
-
-func ReadNextRecord(file *os.File) (map[string][]byte, bool) {
-	crcb := make([]byte, CRC_SIZE)
-	timestamp := make([]byte, TIMESTAMP_SIZE)
-	tomb := make([]byte, TOMBSTONE_SIZE)
-	ksb := make([]byte, KEY_SIZE_SIZE)
-	vsb := make([]byte, VALUE_SIZE_SIZE)
-
-	_, err := file.Read(crcb)
-	if err == io.EOF {
-		return nil, true
-	}
-	file.Read(timestamp)
-	file.Read(tomb)
-	file.Read(ksb)
-	key_size := binary.LittleEndian.Uint64(ksb)
-	file.Read(vsb)
-	val_size := binary.LittleEndian.Uint64(vsb)
-
-	key := make([]byte, key_size)
-	file.Read(key)
-	val := make([]byte, val_size)
-	file.Read(val)
-
-	data := make(map[string][]byte)
-	data["crc"] = crcb
-	data["timestamp"] = timestamp
-	data["tombstone"] = tomb
-	data["key_size"] = ksb
-	data["key"] = key
-	data["val_size"] = vsb
-	data["value"] = val
-
-	return data, false
 }

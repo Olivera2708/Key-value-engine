@@ -95,17 +95,13 @@ func PrintTree(mr *MerkleRoot) {
 	}
 }
 
-func WriteInFile(mr *MerkleRoot, path string) {
-	newFile, err := os.Create(path)
-	err = newFile.Close()
-	if err != nil {
-		return
-	}
+func WriteMerkleInFile(mr *MerkleRoot) {
 
-	file, err := os.OpenFile(path, os.O_WRONLY, 0444)
+	file, err := os.OpenFile("data/Metadata.txt", os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal()
 	}
+	file.Seek(0, 2)
 
 	next_print := []*Node{}
 	next_print = append(next_print, mr.root)
