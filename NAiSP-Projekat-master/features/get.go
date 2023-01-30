@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF) []byte {
+func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int) []byte {
 	key := ""
 	for key == "" {
 		fmt.Print("Unesite ključ -> ")
@@ -32,11 +32,20 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	fmt.Println("Nema bloom")
 
 	for i := 0; true; i++ {
-		_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)
-		if os.IsNotExist(err) {
-			break
+		if sstableType == 2 {
+			_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)
+			if os.IsNotExist(err) {
+				break
+			}
+			found, value = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(i), key)
+		} else {
+			_, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
+			if os.IsNotExist(err) {
+				break
+			}
+			found, value = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(i)+"-data.db", key)
 		}
-		found, value = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(i), key)
+
 		if found {
 			cache.Add(structures.Element{Key: key, Element: value})
 			return value

@@ -148,7 +148,7 @@ func CreateIndex(keys []string, positions []int, path string) *Index {
 		fileWriter.Write(pos1)
 		fileWriter.Flush()
 
-		currentPos += len([]byte(keys[i])) + 4
+		currentPos += len([]byte(keys[i])) + 16
 	}
 	keysSum[len(keys)] = keys[0]
 	keysSum[len(keys)+1] = keys[len(keys)-1]
