@@ -127,6 +127,32 @@ func SizeTieredMulti(level int) {
 							}
 							break
 						} else {
+							if string(rec1["key"]) == string(rec2["key"]) { //jednaki kljucevi
+								t1 := binary.LittleEndian.Uint64(rec1["timestamp"])
+								t2 := binary.LittleEndian.Uint64(rec2["timestamp"])
+								if t1 < t2 && rec2["tombstone"][0] == 0 {
+									rec := append(rec2["crc"], rec2["timestamp"]...)
+									rec = append(rec, rec2["tombstone"]...)
+									rec = append(rec, rec2["key_size"]...)
+									rec = append(rec, rec2["val_size"]...)
+									rec = append(rec, rec2["key"]...)
+									rec = append(rec, rec2["value"]...)
+									new_file.Write(rec)
+
+								} else if rec1["tombstone"][0] == 0 {
+									rec := append(rec1["crc"], rec1["timestamp"]...)
+									rec = append(rec, rec1["tombstone"]...)
+									rec = append(rec, rec1["key_size"]...)
+									rec = append(rec, rec1["val_size"]...)
+									rec = append(rec, rec1["key"]...)
+									rec = append(rec, rec1["value"]...)
+									new_file.Write(rec)
+								}
+								rec1, empty1 = structures.ReadNextRecord(file1)
+								rec2, empty2 = structures.ReadNextRecord(file2)
+								continue
+							}
+
 							if rec1["tombstone"][0] == 1 {
 								rec1, empty1 = structures.ReadNextRecord(file1)
 								continue
@@ -155,29 +181,6 @@ func SizeTieredMulti(level int) {
 								rec = append(rec, rec2["value"]...)
 								new_file.Write(rec)
 
-								rec2, empty2 = structures.ReadNextRecord(file2)
-							} else { //jednaki kljucevi
-								t1 := binary.LittleEndian.Uint64(rec1["timestamp"])
-								t2 := binary.LittleEndian.Uint64(rec2["timestamp"])
-								if t1 < t2 {
-									rec := append(rec2["crc"], rec2["timestamp"]...)
-									rec = append(rec, rec2["tombstone"]...)
-									rec = append(rec, rec2["key_size"]...)
-									rec = append(rec, rec2["val_size"]...)
-									rec = append(rec, rec2["key"]...)
-									rec = append(rec, rec2["value"]...)
-									new_file.Write(rec)
-
-								} else {
-									rec := append(rec1["crc"], rec1["timestamp"]...)
-									rec = append(rec, rec1["tombstone"]...)
-									rec = append(rec, rec1["key_size"]...)
-									rec = append(rec, rec1["val_size"]...)
-									rec = append(rec, rec1["key"]...)
-									rec = append(rec, rec1["value"]...)
-									new_file.Write(rec)
-								}
-								rec1, empty1 = structures.ReadNextRecord(file1)
 								rec2, empty2 = structures.ReadNextRecord(file2)
 							}
 						}
