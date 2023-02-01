@@ -9,7 +9,7 @@
     },
 
     "MemTable": {
-        "memTableMaxCap" : 5,    
+        "memTableMaxCap" : 7,    
         "memTableFlush" : 80,
         "memTableType" : 1
     },

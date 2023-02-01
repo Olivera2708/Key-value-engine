@@ -17,11 +17,11 @@ func main() {
 	WALSegmentationFactor := 5
 	skipListMaxHeight := 5
 	memTableMaxCap := 5
-	//memTableFlush := 80
+	memTableFlush := 80
 	//memTableType := 1 // skipList -> 1, BStablo -> 2
 	cacheSize := 14
 	SSTableType := 2 // single -> 1, multiple -> 2
-	//summaryBlockingFactor := 20
+	summaryBlockingFactor := 20
 	LSMTreeLevel := 4
 	LSMAlgorithm := 1 //size -> 1, lleveled -> 2
 	configFile, err := ioutil.ReadFile("config/config.json")
@@ -37,11 +37,11 @@ func main() {
 		WALSegmentationFactor = payload["WAL"]["WALSegmentationFactor"]
 		skipListMaxHeight = payload["SkipList"]["skipListMaxHeight"]
 		memTableMaxCap = payload["MemTable"]["memTableMaxCap"]
-		//memTableFlush = payload["MemTable"]["memTableFlush"]
+		memTableFlush = payload["MemTable"]["memTableFlush"]
 		//memTableType = payload["MemTable"]["memTableType"]
 		cacheSize = payload["LRUCache"]["cacheSize"]
 		SSTableType = payload["SSTable"]["SSTableType"]
-		//summaryBlockingFactor = payload["SSTable"]["summaryBlockingFactor"]
+		summaryBlockingFactor = payload["SSTable"]["summaryBlockingFactor"]
 		LSMTreeLevel = payload["LSMTree"]["LSMTreeLevel"]
 		LSMAlgorithm = payload["LSMTree"]["LSMAlgorithm"]
 	}
@@ -71,7 +71,7 @@ func main() {
 
 	wal := structures.CreateWAL(uint(WALSegmentationFactor), WALLLowWaterMark)
 	mem := structures.CreateMemtable(skipListMaxHeight, uint(memTableMaxCap), 0)
-	wal.ReadAll(*mem)
+	wal.ReadAll(*mem, generation, SSTableType)
 	bloom := structures.ReadAll()
 	cache := structures.CreateLRU(cacheSize)
 	//ovo sve treba iz config fajla da se cita
@@ -100,22 +100,22 @@ func main() {
 		case "x":
 			return
 		case "1":
-			features.PUT(wal, mem, cache, &generation, *bloom, SSTableType)
+			features.PUT(wal, mem, cache, &generation, *bloom, SSTableType, memTableFlush, summaryBlockingFactor)
 		case "2":
-			value := features.GET(mem, cache, *bloom, SSTableType)
+			value := features.GET(mem, cache, *bloom, SSTableType, LSMTreeLevel, summaryBlockingFactor)
 			if value != nil {
 				fmt.Println("Pronađen je i vrednost je ", string(value))
 			} else {
 				fmt.Println("Element sa traženim ključem nije pronađen.")
 			}
 		case "3":
-			if features.DELETE(wal, mem, cache) {
-				fmt.Println("Uspešno obrisan")
-			} else {
-				fmt.Println("Ne postoji element sa zadatim ključem")
-			}
+			features.DELETE(wal, mem, cache)
+			fmt.Println("Uspešno obrisan")
+
 		case "6":
-			features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)
+			if generation > 1 {
+				generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)
+			}
 
 		case "test":
 			fmt.Println(LSMAlgorithm)

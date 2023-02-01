@@ -182,7 +182,7 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) uint64 {
 	return uint64(t)
 }
 
-func (wal *WAL) ReadAll(mem Memtable) {
+func (wal *WAL) ReadAll(mem Memtable, generation int, sstype int) {
 	//ucitava redom segmente i ispisuje sadrzaj
 	crcb := make([]byte, CRC_SIZE)
 	time2 := make([]byte, TIMESTAMP_SIZE)
@@ -233,6 +233,7 @@ func (wal *WAL) ReadAll(mem Memtable) {
 			// fmt.Println()
 
 			mem.Add(string(key), val, int(tomb[0]), time1)
+			//mem.Flush(&generation, sstype)
 			//provera crc
 			// data := make([]byte, TIMESTAMP_SIZE+TOMBSTONE_SIZE+
 			// 	KEY_SIZE_SIZE+VALUE_SIZE_SIZE+key_size+val_size)

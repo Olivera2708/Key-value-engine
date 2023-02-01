@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func DELETE(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache) bool {
+func DELETE(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache) {
 	key := ""
 	for key == "" {
 		fmt.Print("Unesite ključ -> ")
@@ -16,8 +16,7 @@ func DELETE(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRU
 	mem.Add(key, nil, 1, timestamp)
 
 	elem := structures.Element{Key: key}
-	suc := cache.Delete(elem)
+	cache.Delete(elem)
 
 	wal.Flush()
-	return suc
 }

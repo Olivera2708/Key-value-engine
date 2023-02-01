@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int) {
+func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int, percentage int, summaryBlockingFactor int) {
 
 	key := ""
 	for key == "" {
@@ -26,7 +26,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	elem := structures.Element{Key: key, Element: value}
 	cache.Add(elem)
 
-	mem.Flush(generation, sstableType)
+	mem.Flush(generation, sstableType, percentage, summaryBlockingFactor)
 	wal.Flush()
 	bloomf.WriteGlobal()
 

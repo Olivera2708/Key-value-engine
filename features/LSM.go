@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func LSM(sstype int, algorithm int, level int) {
+func LSM(sstype int, algorithm int, level int) int {
 	if algorithm == 1 {
 		if sstype == 1 {
 			fmt.Println("sts")
@@ -26,6 +26,7 @@ func LSM(sstype int, algorithm int, level int) {
 			LeveledMulti(level)
 		}
 	}
+	return 0
 }
 
 func SizeTieredSingle(level int) {}
@@ -33,7 +34,6 @@ func LeveledSingle(level int)    {}
 func LeveledMulti(level int)     {}
 
 func SizeTieredMulti(level int) {
-	//fmt.Println("ovde")
 	var jos bool
 
 	for lv := 0; lv < level; lv++ {
@@ -50,40 +50,44 @@ func SizeTieredMulti(level int) {
 
 		k := -1
 
-		terminate_list := make([]int, 0)
+		terminate_list := make([]int, 1)
+
+		file1, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lv)+"-0-data.db", os.O_RDWR, 0666)
+		if os.IsNotExist(err) {
+			jos = false
+			k = -1
+			continue
+		}
+
+		terminate_list[0] = 0
 
 		for jos = true; jos; {
 
-			for i := 0; ; i = i + 2 {
-				file1, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lv)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDWR, 0666)
-				if os.IsNotExist(err) {
-					jos = false
-					k = -1
-					break
-				}
+			for i := 1; ; i++ {
 
-				file2, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lv)+"-"+fmt.Sprint(i+1)+"-data.db", os.O_RDWR, 0666)
+				file2, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lv)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDWR, 0666)
 				if os.IsNotExist(err) {
 					jos = false
-					k = i
+					k = i - 1
+					file2.Close()
+					file1.Close()
 					break
 				}
 
 				if jos {
-					term := make([]int, 2)
+					term := make([]int, 1)
 					term[0] = i
-					term[1] = i + 1
 					terminate_list = append(terminate_list, term...)
 					//postoje dva fajla lv nivoa koje treba spojiti
 
 					//novi fajl ima lvl: lv+1, indeks: i
 
 					fmt.Println(generation)
-					new_file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lv+1)+"-"+fmt.Sprint(generation)+"-data.db", os.O_CREATE|os.O_WRONLY, 0666)
+
+					new_file, err := os.OpenFile("data/sstables/usertable-pomocna-"+fmt.Sprint(i)+"-data.db", os.O_CREATE|os.O_WRONLY, 0666)
 					if err != nil {
 						log.Fatal(err)
 					}
-					//defer new_file.Close()
 
 					empty1 := false
 					empty2 := false
@@ -98,7 +102,6 @@ func SizeTieredMulti(level int) {
 								if rec2["tombstone"][0] == 1 {
 									continue
 								}
-								//new_file.Seek(0, 2)
 								rec := append(rec2["crc"], rec2["timestamp"]...)
 								rec = append(rec, rec2["tombstone"]...)
 								rec = append(rec, rec2["key_size"]...)
@@ -110,6 +113,7 @@ func SizeTieredMulti(level int) {
 								rec2, empty2 = structures.ReadNextRecord(file2)
 							}
 							break
+
 						} else if empty2 {
 							for !empty1 {
 								if rec1["tombstone"][0] == 1 {
@@ -126,11 +130,12 @@ func SizeTieredMulti(level int) {
 								rec1, empty1 = structures.ReadNextRecord(file1)
 							}
 							break
+
 						} else {
 							if string(rec1["key"]) == string(rec2["key"]) { //jednaki kljucevi
 								t1 := binary.LittleEndian.Uint64(rec1["timestamp"])
 								t2 := binary.LittleEndian.Uint64(rec2["timestamp"])
-								if t1 < t2 && rec2["tombstone"][0] == 0 {
+								if t1 <= t2 && rec2["tombstone"][0] == 0 {
 									rec := append(rec2["crc"], rec2["timestamp"]...)
 									rec = append(rec, rec2["tombstone"]...)
 									rec = append(rec, rec2["key_size"]...)
@@ -139,7 +144,7 @@ func SizeTieredMulti(level int) {
 									rec = append(rec, rec2["value"]...)
 									new_file.Write(rec)
 
-								} else if rec1["tombstone"][0] == 0 {
+								} else if t1 > t2 && rec1["tombstone"][0] == 0 {
 									rec := append(rec1["crc"], rec1["timestamp"]...)
 									rec = append(rec, rec1["tombstone"]...)
 									rec = append(rec, rec1["key_size"]...)
@@ -193,26 +198,41 @@ func SizeTieredMulti(level int) {
 					}
 					file2.Close()
 
+					file1, err = os.OpenFile("data/sstables/usertable-pomocna-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
+					if err != nil {
+						log.Fatal(err)
+					}
+
 				}
 
 			}
 
 		}
-		for q := 0; q < len(terminate_list); q++ {
-			err := os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-data.db")
-			if err != nil {
-				log.Fatal(err)
+
+		os.Rename("data/sstables/usertable-pomocna-"+fmt.Sprint(k)+"-data.db",
+			"data/sstables/usertable-"+fmt.Sprint(lv+1)+"-"+fmt.Sprint(generation)+"-data.db")
+
+		if len(terminate_list) > 1 {
+			for q := 0; q < len(terminate_list); q++ {
+				err := os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-data.db")
+				if err != nil {
+					log.Fatal(err)
+				}
+				/*
+					os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-filter.db")
+					os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-index.db")
+					os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-summary.db")
+					os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-TOC.txt")
+				*/
 			}
-			os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-filter.db")
-			os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-index.db")
-			os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-summary.db")
-			os.Remove("data/sstables/usertable-" + fmt.Sprint(lv) + "-" + fmt.Sprint(terminate_list[q]) + "-TOC.txt")
 
-		}
+			for pom := 1; pom < k; pom++ {
 
-		if k > 0 {
-			os.Rename("data/sstables/usertable-"+fmt.Sprint(lv)+"-"+fmt.Sprint(k)+"-data.db",
-				"data/sstables/usertable-"+fmt.Sprint(lv)+"-0-data.db")
+				err := os.Remove("data/sstables/usertable-pomocna-" + fmt.Sprint(pom) + "-data.db")
+				if os.IsNotExist(err) {
+					break
+				}
+			}
 		}
 
 	}

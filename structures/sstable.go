@@ -11,16 +11,12 @@ import (
 	"strconv"
 )
 
-const (
-	SUMMARY_BLOCKING_FACTOR = 10 // promeniti da bude iz config fajla
-)
-
 type SSTable struct {
 	path  string
 	index *Index
 }
 
-func CreateSSTable(memtable *Memtable, generation int) *SSTable {
+func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int) *SSTable {
 	path := "data/sstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
 
 	outFile, err := os.Create(path + "-data.db")
@@ -97,7 +93,7 @@ func CreateSSTable(memtable *Memtable, generation int) *SSTable {
 	}
 
 	bf.Write(path)
-	index := CreateIndex(keys, positions, path)
+	index := CreateIndex(keys, positions, path, summaryBlockingFactor)
 	sstable := SSTable{path: path, index: index}
 	CreateTOC(&sstable)
 
@@ -112,7 +108,7 @@ type Index struct {
 	summary *Summary
 }
 
-func CreateIndex(keys []string, positions []int, path string) *Index {
+func CreateIndex(keys []string, positions []int, path string, summaryBlockingFactor int) *Index {
 	indexPath := path + "-index.db"
 
 	outFile, err := os.Create(indexPath)
@@ -153,7 +149,7 @@ func CreateIndex(keys []string, positions []int, path string) *Index {
 	keysSum[len(keys)] = keys[0]
 	keysSum[len(keys)+1] = keys[len(keys)-1]
 
-	summary := CreateSummary(keySizesSum, keysSum, positionsSum, path)
+	summary := CreateSummary(keySizesSum, keysSum, positionsSum, path, summaryBlockingFactor)
 
 	index := Index{path: indexPath, summary: summary}
 	return &index
@@ -163,7 +159,7 @@ type Summary struct {
 	path string
 }
 
-func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path string) *Summary {
+func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path string, summaryBlockingFactor int) *Summary {
 	sumPath := path + "-summary.db"
 
 	outFile, err := os.Create(sumPath)
@@ -183,7 +179,7 @@ func CreateSummary(keySizesSum []int, keysSum []string, positionsSum []int, path
 	fileWriter.Write([]byte(keysSum[len(keysSum)-1]))
 
 	for i := 0; i < len(positionsSum); i += 1 {
-		if i%SUMMARY_BLOCKING_FACTOR == 0 {
+		if i%summaryBlockingFactor == 0 {
 
 			keySize1 := make([]byte, 8, 8)
 			binary.LittleEndian.PutUint64(keySize1, uint64(keySizesSum[i]))

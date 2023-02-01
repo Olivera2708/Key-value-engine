@@ -16,7 +16,7 @@ type SingleSSTable struct {
 	path string
 }
 
-func CreateSingleSSTable(memtable *Memtable, generation int) *SingleSSTable {
+func CreateSingleSSTable(memtable *Memtable, generation int, summaryBlockingFactor int) *SingleSSTable {
 	path := "data/singlesstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
 	outFile, err := os.Create(path + "-data.db")
 	if err != nil {
@@ -149,7 +149,7 @@ func CreateSingleSSTable(memtable *Memtable, generation int) *SingleSSTable {
 	currentPos += 16 + len([]byte(keysSum[len(keysSum)-2])) + len([]byte(keysSum[len(keysSum)-1]))
 
 	for i := 0; i < len(positionsSum); i += 1 {
-		if i%SUMMARY_BLOCKING_FACTOR == 0 {
+		if i%summaryBlockingFactor == 0 {
 
 			keySize1 := make([]byte, 8, 8)
 			binary.LittleEndian.PutUint64(keySize1, uint64(keySizesSum[i]))
@@ -189,7 +189,7 @@ func CreateSingleSSTable(memtable *Memtable, generation int) *SingleSSTable {
 	return &ssst
 }
 
-func ReadSingleSummary(path, key string) (bool, []byte) {
+func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byte) {
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	defer file.Close()
 	lengthBytes := make([]byte, 8, 8)
@@ -235,7 +235,7 @@ func ReadSingleSummary(path, key string) (bool, []byte) {
 	file.Read(endIndex)
 	if key >= string(startIndex) && key <= string(endIndex) {
 		position := make([]byte, 8)
-		for i := 0; i < int(math.Ceil(float64(length)/float64(SUMMARY_BLOCKING_FACTOR))); i++ {
+		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
 
 			//fmt.Print(int(math.Ceil(float64(length) / float64(SUMMARY_BLOCKING_FACTOR))))
 
@@ -263,7 +263,7 @@ func ReadSingleSummary(path, key string) (bool, []byte) {
 			// file.Seek(8, 1)
 			file.Read(position)
 
-			if i == int(math.Ceil(float64(length)/float64(SUMMARY_BLOCKING_FACTOR)))-1 {
+			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
 				pos := binary.LittleEndian.Uint64(position)
 				found, value := ReadSingleIndex(file, key, pos, posInd)
 				return found, value
