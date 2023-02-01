@@ -29,9 +29,7 @@
     },
 
     "TokenBucket" : {
-        
+        "TokenTime" : 10,
+        "TokenNumber" : 5
     }
-
-    
-
 }

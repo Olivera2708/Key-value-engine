@@ -3,15 +3,38 @@ package main
 import (
 	"Projekat/features"
 	"Projekat/structures"
+	"container/list"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 )
 
-func main() {
+func tocken_bucket(time_flush int, number int, all_el *list.List) bool {
+	num_el := 0
+	time_now := time.Now().Unix()
 
+	e := all_el.Front()
+	for e != nil {
+		if time_now-e.Value.(int64) >= int64(time_flush) {
+			next := e.Next()
+			all_el.Remove(e)
+			e = next
+		} else {
+			num_el++
+			e = e.Next()
+		}
+	}
+	if num_el < number {
+		all_el.PushBack(time_now)
+		return true
+	}
+	return false
+}
+
+func main() {
 	generation := 0
 	WALLLowWaterMark := 1
 	WALSegmentationFactor := 5
@@ -24,6 +47,8 @@ func main() {
 	summaryBlockingFactor := 20
 	LSMTreeLevel := 4
 	LSMAlgorithm := 1 //size -> 1, lleveled -> 2
+	TokenTime := 10
+	TokenNumber := 5
 	configFile, err := ioutil.ReadFile("config/config.json")
 	if err == nil {
 
@@ -44,8 +69,11 @@ func main() {
 		summaryBlockingFactor = payload["SSTable"]["summaryBlockingFactor"]
 		LSMTreeLevel = payload["LSMTree"]["LSMTreeLevel"]
 		LSMAlgorithm = payload["LSMTree"]["LSMAlgorithm"]
+		TokenTime = payload["TokenBucket"]["TokenTime"]
+		TokenNumber = payload["TokenBucket"]["TokenNumber"]
 	}
 
+	//brojanje generacija
 	for i := 0; true; i++ {
 		if SSTableType == 2 {
 			file, err := os.OpenFile("data/sstables/usertable-0-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
@@ -62,13 +90,9 @@ func main() {
 			}
 			file.Close()
 		}
-
 	}
 
-	//fmt.Println(payload["SSTable"]["SSTableType"])
-
 	//inicijalizacija
-
 	wal := structures.CreateWAL(uint(WALSegmentationFactor), WALLLowWaterMark)
 	mem := structures.CreateMemtable(skipListMaxHeight, uint(memTableMaxCap), 0)
 	wal.ReadAll(*mem, generation, SSTableType)
@@ -90,39 +114,43 @@ func main() {
 	fmt.Println("-----------------------------------------------")
 
 	var a string = ""
+	TokenList := list.New()
 
 	for {
 		fmt.Print("\nIzaberite opciju -> ")
 		fmt.Scanln(&a)
-		//a = "6"
 
-		switch a {
-		case "x":
-			return
-		case "1":
-			features.PUT(wal, mem, cache, &generation, *bloom, SSTableType, memTableFlush, summaryBlockingFactor)
-		case "2":
-			value := features.GET(mem, cache, *bloom, SSTableType, LSMTreeLevel, summaryBlockingFactor)
-			if value != nil {
-				fmt.Println("Pronađen je i vrednost je ", string(value))
-			} else {
-				fmt.Println("Element sa traženim ključem nije pronađen.")
+		if tocken_bucket(TokenTime, TokenNumber, TokenList) {
+			switch a {
+			case "x":
+				return
+			case "1":
+				features.PUT(wal, mem, cache, &generation, *bloom, SSTableType, memTableFlush, summaryBlockingFactor)
+			case "2":
+				value := features.GET(mem, cache, *bloom, SSTableType, LSMTreeLevel, summaryBlockingFactor)
+				if value != nil {
+					fmt.Println("Pronađen je i vrednost je ", string(value))
+				} else {
+					fmt.Println("Element sa traženim ključem nije pronađen.")
+				}
+			case "3":
+				features.DELETE(wal, mem, cache)
+				fmt.Println("Uspešno obrisan")
+
+			case "6":
+				if generation > 1 {
+					generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)
+				}
+
+			case "test":
+				fmt.Println(LSMAlgorithm)
+				fmt.Println(LSMTreeLevel)
+				fmt.Println(SSTableType)
+			default:
+				fmt.Println("Pogrešan unos")
 			}
-		case "3":
-			features.DELETE(wal, mem, cache)
-			fmt.Println("Uspešno obrisan")
-
-		case "6":
-			if generation > 1 {
-				generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)
-			}
-
-		case "test":
-			fmt.Println(LSMAlgorithm)
-			fmt.Println(LSMTreeLevel)
-			fmt.Println(SSTableType)
-		default:
-			fmt.Println("Pogrešan unos")
+		} else {
+			fmt.Println("Previše operacija u kratkom vremenskom roku")
 		}
 
 		a = ""
