@@ -48,5 +48,9 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 		}
 	}
 
-	writerPrefix(all_data, ResultsNumber)
+	if len(all_data) == 0 {
+		fmt.Println("Nema rezultata")
+	} else {
+		writerPrefix(all_data, ResultsNumber)
+	}
 }

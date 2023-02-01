@@ -409,7 +409,7 @@ func FindPrefixIndexMultiple(path string, key string, position uint64) []string 
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
 		if strings.HasPrefix(string(key1), key) {
-			return_data = append(return_data, string(key1))
+			return_data = append(return_data, string(key1)) //vrati vrednost preko data
 		} else if string(key1) > key {
 			break
 		}
@@ -473,7 +473,7 @@ func FindPrefixIndexRangeMultiple(path string, min_prefix string, max_prefix str
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
 		if string(key1) <= max_prefix && string(key1) >= min_prefix {
-			return_data = append(return_data, string(key1))
+			return_data = append(return_data, string(key1)) //vrati vrednost preko data
 		} else if string(key1) > max_prefix {
 			break
 		}

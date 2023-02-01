@@ -41,8 +41,11 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 	}
 
 	//ispis
-	writerPrefix(all_data, ResultsNumber)
-
+	if len(all_data) == 0 {
+		fmt.Println("Nema rezultata")
+	} else {
+		writerPrefix(all_data, ResultsNumber)
+	}
 }
 
 func writerPrefix(all_data []string, ResultsNumber int) {
