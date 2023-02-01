@@ -16,7 +16,7 @@ type SingleSSTable struct {
 	path string
 }
 
-func CreateSingleSSTable(memtable *Memtable, generation int, summaryBlockingFactor int) *SingleSSTable {
+func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *SingleSSTable {
 	path := "data/singlesstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
 	outFile, err := os.Create(path + "-data.db")
 	if err != nil {
@@ -36,24 +36,20 @@ func CreateSingleSSTable(memtable *Memtable, generation int, summaryBlockingFact
 	fileWriter.Write(initHeader)
 	fileWriter.Flush()
 
-	for node := memtable.data.head.next[0]; node != nil; node = node.next[0] {
-		key := node.key
+	for i := 0; i < len(data); i++ {
+		key := string(data[i][0])
 		keys = append(keys, key)
 
-		value := node.value
+		value := data[i][1]
 		// values = append(values, value)
 
 		positions = append(positions, currentPos)
 
-		timeStamp := node.timestamp
-		timeStamp1 := make([]byte, 8, 8)
-		binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
-		//copy(timeStamp1, timeStamp)
+		timeStamp := data[i][3]
+		//timeStamp1 := make([]byte, 8, 8)
+		//binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
 
-		tombstone := uint8(node.status)
-		if tombstone > 0 {
-			tombstone = 1
-		}
+		tombstone := data[i][2]
 
 		key1 := []byte(key)
 
@@ -65,10 +61,7 @@ func CreateSingleSSTable(memtable *Memtable, generation int, summaryBlockingFact
 		valueSize1 := make([]byte, 8, 8)
 		binary.LittleEndian.PutUint64(valueSize1, valueSize)
 
-		tombstone1 := make([]byte, 1, 1)
-		tombstone1[0] = tombstone
-
-		record := append(timeStamp1, tombstone1...)
+		record := append(timeStamp, tombstone...)
 		record = append(record, keySize1...)
 		record = append(record, valueSize1...)
 		record = append(record, key1...)
@@ -80,8 +73,8 @@ func CreateSingleSSTable(memtable *Memtable, generation int, summaryBlockingFact
 		binary.LittleEndian.PutUint32(crc1, crc)
 
 		fileWriter.Write(crc1)
-		fileWriter.Write(timeStamp1)
-		fileWriter.WriteByte(uint8(tombstone))
+		fileWriter.Write(timeStamp)
+		fileWriter.Write(tombstone)
 		fileWriter.Write(keySize1)
 		fileWriter.Write(valueSize1)
 		fileWriter.Write(key1)

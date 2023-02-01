@@ -49,7 +49,7 @@ func writerPrefix(all_data []string, ResultsNumber int) {
 	pageNumber := ""
 	currentPage := -1
 	for true {
-		fmt.Print("Unesite broj strane, 'p' za prethodnu stanu, 's' za sledeću ili 'x' za izlazak -> ")
+		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
 		fmt.Scan(&pageNumber)
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {

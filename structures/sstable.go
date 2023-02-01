@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type SSTable struct {
@@ -16,7 +17,7 @@ type SSTable struct {
 	index *Index
 }
 
-func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int) *SSTable {
+func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *SSTable {
 	path := "data/sstables/usertable-0-" + strconv.FormatInt(int64(generation), 10)
 
 	outFile, err := os.Create(path + "-data.db")
@@ -33,23 +34,20 @@ func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int
 	values := make([][]byte, 0)
 	positions := make([]int, 0)
 
-	for node := memtable.data.head.next[0]; node != nil; node = node.next[0] {
-		key := node.key
+	for i := 0; i < len(data); i++ {
+		key := string(data[i][0])
 		keys = append(keys, key)
 
-		value := node.value
+		value := data[i][1]
 		values = append(values, value)
 
 		positions = append(positions, currentPos)
 
-		timeStamp := node.timestamp
-		timeStamp1 := make([]byte, 8, 8)
-		binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
+		timeStamp := data[i][3]
+		//timeStamp1 := make([]byte, 8, 8)
+		//binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
 
-		tombstone := uint8(node.status)
-		if tombstone > 0 {
-			tombstone = 1
-		}
+		tombstone := data[i][2]
 
 		key1 := []byte(key)
 
@@ -61,10 +59,7 @@ func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int
 		valueSize1 := make([]byte, 8, 8)
 		binary.LittleEndian.PutUint64(valueSize1, valueSize)
 
-		tombstone1 := make([]byte, 1, 1)
-		tombstone1[0] = tombstone
-
-		record := append(timeStamp1, tombstone1...)
+		record := append(timeStamp, tombstone...)
 		record = append(record, keySize1...)
 		record = append(record, valueSize1...)
 		record = append(record, key1...)
@@ -76,8 +71,8 @@ func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int
 		binary.LittleEndian.PutUint32(crc1, crc)
 
 		fileWriter.Write(crc1)
-		fileWriter.Write(timeStamp1)
-		fileWriter.WriteByte(uint8(tombstone))
+		fileWriter.Write(timeStamp)
+		fileWriter.Write(tombstone)
 		fileWriter.Write(keySize1)
 		fileWriter.Write(valueSize1)
 		fileWriter.Write(key1)
@@ -95,7 +90,7 @@ func CreateSSTable(memtable *Memtable, generation int, summaryBlockingFactor int
 	bf.Write(path)
 	index := CreateIndex(keys, positions, path, summaryBlockingFactor)
 	sstable := SSTable{path: path, index: index}
-	CreateTOC(&sstable)
+	CreateTOC(path)
 
 	merkle := CreateMerkleTree(values)
 	WriteMerkleInFile(merkle)
@@ -305,9 +300,8 @@ func ReadSSTable(path, key string, position uint64) []byte {
 	return value
 }
 
-func CreateTOC(sstable *SSTable) {
-	path := sstable.path + "-TOC.txt"
-	inFile, err := os.Create(path)
+func CreateTOC(path string) {
+	inFile, err := os.Create(path + "-TOC.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -315,10 +309,11 @@ func CreateTOC(sstable *SSTable) {
 
 	fileWriter := bufio.NewWriter(inFile)
 
-	fileWriter.WriteString(sstable.path + "\n")
-	fileWriter.WriteString(sstable.path + "-data.db\n")
-	fileWriter.WriteString(sstable.path + "-index.db\n")
-	fileWriter.WriteString(sstable.path + "-summary.db\n")
+	fileWriter.WriteString(path + "\n")
+	fileWriter.WriteString(path + "-data.db\n")
+	fileWriter.WriteString(path + "-index.db\n")
+	fileWriter.WriteString(path + "-summary.db\n")
+	fileWriter.WriteString(path + "-filter.db\n")
 	fileWriter.Flush()
 
 	return
@@ -359,7 +354,11 @@ func ReadNextRecord(file *os.File) (map[string][]byte, bool) {
 	return data, false
 }
 
-func FindAllPrefixMultiple(path string, prefix string) []string {
+func FindAllPrefixMultiple(path string, key string) []string {
+	return FindPrefixSummaryMultiple(path, key)
+}
+
+func FindPrefixSummaryMultiple(path string, key string) []string {
 	return_data := []string{}
 
 	startLen := make([]byte, 8)
@@ -378,13 +377,107 @@ func FindAllPrefixMultiple(path string, prefix string) []string {
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
 
-	fmt.Println(string(startIndex))
-	fmt.Println(string(endIndex))
+	if (key >= string(startIndex) || strings.HasPrefix(string(startIndex), key)) && key <= string(endIndex) {
+		position := make([]byte, 8)
+		keyLen := make([]byte, 8)
+		_, err = file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		file.Read(position)
+		pos := binary.LittleEndian.Uint64(position)
+		return_data = append(return_data, FindPrefixIndexMultiple(path, key, pos)...)
+	}
+	return return_data
+}
 
+func FindPrefixIndexMultiple(path string, key string, position uint64) []string {
+	return_data := []string{}
+	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Seek(int64(position), 0)
+	for true {
+		keyLen := make([]byte, 8)
+		_, err = file.Read(keyLen)
+		if err != nil {
+			break
+		}
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		if strings.HasPrefix(string(key1), key) {
+			return_data = append(return_data, string(key1))
+		} else if string(key1) > key {
+			break
+		}
+		file.Seek(8, 1)
+	}
 	return return_data
 }
 
 func FindAllPrefixRangeMultiple(path string, min_prefix string, max_prefix string) []string {
+	return FindPrefixSummaryRangeMultiple(path, min_prefix, max_prefix)
+}
+
+func FindPrefixSummaryRangeMultiple(path string, min_prefix string, max_prefix string) []string {
 	return_data := []string{}
+
+	startLen := make([]byte, 8)
+	endLen := make([]byte, 8)
+	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Read(startLen)
+	startL := binary.LittleEndian.Uint64(startLen)
+	startIndex := make([]byte, startL)
+	file.Read(startIndex)
+	file.Read(endLen)
+	endL := binary.LittleEndian.Uint64(endLen)
+	endIndex := make([]byte, endL)
+	file.Read(endIndex)
+
+	if (min_prefix <= string(startIndex) && string(startIndex) <= max_prefix) || (min_prefix <= string(endIndex) && string(endIndex) <= max_prefix) {
+		position := make([]byte, 8)
+		keyLen := make([]byte, 8)
+		_, err = file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		file.Read(position)
+		pos := binary.LittleEndian.Uint64(position)
+		return_data = append(return_data, FindPrefixIndexRangeMultiple(path, min_prefix, max_prefix, pos)...)
+	}
+	return return_data
+}
+
+func FindPrefixIndexRangeMultiple(path string, min_prefix string, max_prefix string, position uint64) []string {
+	return_data := []string{}
+	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Seek(int64(position), 0)
+	for true {
+		keyLen := make([]byte, 8)
+		_, err = file.Read(keyLen)
+		if err != nil {
+			break
+		}
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		if string(key1) <= max_prefix && string(key1) >= min_prefix {
+			return_data = append(return_data, string(key1))
+		} else if string(key1) > max_prefix {
+			break
+		}
+		file.Seek(8, 1)
+	}
 	return return_data
 }

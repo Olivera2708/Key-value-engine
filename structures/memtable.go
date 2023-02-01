@@ -51,10 +51,11 @@ func (Memtable *Memtable) Find(key string) (found bool, value []byte) {
 
 func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int, summaryBlockingFactor int) {
 	if float64(memtable.capacity)/float64(memtable.max_capacity)*100 >= float64(percentage) { //ovde treba videti odakle se uzima granica popunjenosti
+		data := memtable.data.GetData()
 		if sstableType == 2 {
-			CreateSSTable(memtable, *generation, summaryBlockingFactor)
+			CreateSSTable(data, *generation, summaryBlockingFactor)
 		} else {
-			CreateSingleSSTable(memtable, *generation, summaryBlockingFactor)
+			CreateSingleSSTable(data, *generation, summaryBlockingFactor)
 		}
 		*generation++
 		memtable.capacity = 0

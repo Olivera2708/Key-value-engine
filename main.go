@@ -144,7 +144,7 @@ func main() {
 				features.RANGE_SCAN(mem, LSMTreeLevel, SSTableType, summaryBlockingFactor, ResultsNumber)
 			case "6":
 				if generation > 1 {
-					generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)
+					generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel, summaryBlockingFactor)
 				}
 
 			case "test":

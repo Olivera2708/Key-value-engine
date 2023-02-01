@@ -1,6 +1,7 @@
 package structures
 
 import (
+	"encoding/binary"
 	"math/rand"
 	"strings"
 )
@@ -172,4 +173,23 @@ func (s *SkipList) roll() int {
 		s.height = level
 	}
 	return level
+}
+
+func (s *SkipList) GetData() [][][]byte { // key, value, tombstone, timestamp
+	data := make([][][]byte, 0)
+	for node := s.head.next[0]; node != nil; node = node.next[0] {
+		newRec := make([][]byte, 4)
+		newRec[0] = []byte(node.key)
+		newRec[1] = node.value
+		tombstone := node.status
+		tombstone1 := make([]byte, 1, 1)
+		binary.LittleEndian.PutUint16(tombstone1, uint16(tombstone))
+		newRec[2] = tombstone1
+		timestamp := node.timestamp
+		timestamp1 := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(timestamp1, uint64(timestamp))
+		newRec[3] = timestamp1
+		data = append(data, newRec)
+	}
+	return data
 }
