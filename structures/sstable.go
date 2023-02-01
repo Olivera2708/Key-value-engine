@@ -358,3 +358,33 @@ func ReadNextRecord(file *os.File) (map[string][]byte, bool) {
 
 	return data, false
 }
+
+func FindAllPrefixMultiple(path string, prefix string) []string {
+	return_data := []string{}
+
+	startLen := make([]byte, 8)
+	endLen := make([]byte, 8)
+	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	file.Read(startLen)
+	startL := binary.LittleEndian.Uint64(startLen)
+	startIndex := make([]byte, startL)
+	file.Read(startIndex)
+	file.Read(endLen)
+	endL := binary.LittleEndian.Uint64(endLen)
+	endIndex := make([]byte, endL)
+	file.Read(endIndex)
+
+	fmt.Println(string(startIndex))
+	fmt.Println(string(endIndex))
+
+	return return_data
+}
+
+func FindAllPrefixRangeMultiple(path string, min_prefix string, max_prefix string) []string {
+	return_data := []string{}
+	return return_data
+}

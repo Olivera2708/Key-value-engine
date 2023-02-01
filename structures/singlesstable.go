@@ -313,3 +313,15 @@ func ReadSingleSSTable(file *os.File, key string, pos uint64) []byte {
 	file.Read(value)
 	return value
 }
+
+func FindAllPrefixSingle(path string, prefix string, summaryBlockingFactor int) []string {
+	return_data := []string{}
+
+	return return_data
+}
+
+func FindAllPrefixRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) []string {
+	return_data := []string{}
+
+	return return_data
+}

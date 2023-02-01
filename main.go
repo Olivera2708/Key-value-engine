@@ -49,6 +49,7 @@ func main() {
 	LSMAlgorithm := 1 //size -> 1, lleveled -> 2
 	TokenTime := 10
 	TokenNumber := 5
+	ResultsNumber := 5
 	configFile, err := ioutil.ReadFile("config/config.json")
 	if err == nil {
 
@@ -71,6 +72,7 @@ func main() {
 		LSMAlgorithm = payload["LSMTree"]["LSMAlgorithm"]
 		TokenTime = payload["TokenBucket"]["TokenTime"]
 		TokenNumber = payload["TokenBucket"]["TokenNumber"]
+		ResultsNumber = payload["Pagination"]["ResultsNumber"]
 	}
 
 	//brojanje generacija
@@ -136,7 +138,10 @@ func main() {
 			case "3":
 				features.DELETE(wal, mem, cache)
 				fmt.Println("Uspešno obrisan")
-
+			case "4":
+				features.LIST(mem, LSMTreeLevel, SSTableType, summaryBlockingFactor, ResultsNumber)
+			case "5":
+				features.RANGE_SCAN(mem, LSMTreeLevel, SSTableType, summaryBlockingFactor, ResultsNumber)
 			case "6":
 				if generation > 1 {
 					generation = features.LSM(SSTableType, LSMAlgorithm, LSMTreeLevel)

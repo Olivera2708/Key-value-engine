@@ -31,5 +31,9 @@
     "TokenBucket" : {
         "TokenTime" : 10,
         "TokenNumber" : 5
+    },
+
+    "Pagination" : {
+        "ResultsNumber" : 5
     }
 }

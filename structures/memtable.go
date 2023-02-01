@@ -29,6 +29,14 @@ func (memtable *Memtable) Update(key string, value []byte, stat int) bool {
 // 	return element
 // }
 
+func (Memtable *Memtable) FindAllPrefix(prefix string) []string {
+	return Memtable.data.FindAllPrefix(prefix)
+}
+
+func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) []string {
+	return Memtable.data.FindAllPrefixRange(min_prefix, max_prefix)
+}
+
 func (Memtable *Memtable) Find(key string) (found bool, value []byte) {
 	found, element := Memtable.data.Found(key)
 	if found {

@@ -2,6 +2,7 @@ package structures
 
 import (
 	"math/rand"
+	"strings"
 )
 
 type SkipL interface {
@@ -127,6 +128,32 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 		}
 	}
 	return false
+}
+
+func (s *SkipList) FindAllPrefix(prefix string) []string {
+	node := s.head.next[0]
+	return_data := []string{}
+
+	for node != nil {
+		if node.status == 0 && strings.HasPrefix(node.key, prefix) {
+			return_data = append(return_data, node.key)
+		}
+		node = node.next[0]
+	}
+	return return_data
+}
+
+func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) []string {
+	return_data := []string{}
+	node := s.head.next[0]
+
+	for node != nil {
+		if node.status == 0 && min_prefix <= node.key && max_prefix >= node.key {
+			return_data = append(return_data, node.key)
+		}
+		node = node.next[0]
+	}
+	return return_data
 }
 
 func (s *SkipList) roll() int {
