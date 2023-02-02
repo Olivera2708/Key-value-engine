@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int, ResultsNumber int) {
@@ -94,6 +95,21 @@ func writeAllPrefixData(all_keys []string, all_data [][]byte, ResultsNumber int,
 		if i >= len(all_data) {
 			break
 		}
-		fmt.Println(fmt.Sprint(i+1) + ". \t" + "ključ: " + all_keys[i] + "\n\tvrednost: " + string(all_data[i])) //ispisuje kao string
+		write_value := string(all_data[i])
+		write_key := all_keys[i]
+		if strings.Contains(all_keys[i], "-bloom") {
+			write_key = strings.ReplaceAll(write_key, "-bloom", "")
+			write_value = "Bloom filter"
+		} else if strings.Contains(all_keys[i], "-cms") {
+			write_key = strings.ReplaceAll(write_key, "-cms", "")
+			write_value = "Count min sketch"
+		} else if strings.Contains(all_keys[i], "-hll") {
+			write_key = strings.ReplaceAll(write_key, "-hll", "")
+			write_value = "Hyper Log Log"
+		} else if strings.Contains(all_keys[i], "-simHash") {
+			write_key = strings.ReplaceAll(write_key, "-simHash", "")
+			write_value = "Sim Hash"
+		}
+		fmt.Println(fmt.Sprint(i+1) + ". \t" + "ključ: " + write_key + "\n\tvrednost: " + write_value)
 	}
 }
