@@ -29,11 +29,11 @@ func (memtable *Memtable) Update(key string, value []byte, stat int) bool {
 // 	return element
 // }
 
-func (Memtable *Memtable) FindAllPrefix(prefix string) []string {
+func (Memtable *Memtable) FindAllPrefix(prefix string) ([]string, [][]byte) {
 	return Memtable.data.FindAllPrefix(prefix)
 }
 
-func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) []string {
+func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
 	return Memtable.data.FindAllPrefixRange(min_prefix, max_prefix)
 }
 

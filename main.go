@@ -121,6 +121,7 @@ func main() {
 	for {
 		fmt.Print("\nIzaberite opciju -> ")
 		fmt.Scanln(&a)
+		// a = "5"
 
 		if tocken_bucket(TokenTime, TokenNumber, TokenList) {
 			switch a {

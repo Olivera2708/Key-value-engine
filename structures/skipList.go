@@ -131,30 +131,34 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 	return false
 }
 
-func (s *SkipList) FindAllPrefix(prefix string) []string {
+func (s *SkipList) FindAllPrefix(prefix string) ([]string, [][]byte) {
 	node := s.head.next[0]
-	return_data := []string{}
+	return_data := [][]byte{}
+	all_keys := []string{}
 
 	for node != nil {
 		if node.status == 0 && strings.HasPrefix(node.key, prefix) {
-			return_data = append(return_data, node.key)
+			all_keys = append(all_keys, node.key)
+			return_data = append(return_data, node.value)
 		}
 		node = node.next[0]
 	}
-	return return_data
+	return all_keys, return_data
 }
 
-func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) []string {
-	return_data := []string{}
+func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
+	return_data := [][]byte{}
+	all_keys := []string{}
 	node := s.head.next[0]
 
 	for node != nil {
 		if node.status == 0 && min_prefix <= node.key && max_prefix >= node.key {
-			return_data = append(return_data, node.key)
+			all_keys = append(all_keys, node.key)
+			return_data = append(return_data, node.value)
 		}
 		node = node.next[0]
 	}
-	return return_data
+	return all_keys, return_data
 }
 
 func (s *SkipList) roll() int {
@@ -183,7 +187,8 @@ func (s *SkipList) GetData() [][][]byte { // key, value, tombstone, timestamp
 		newRec[1] = node.value
 		tombstone := node.status
 		tombstone1 := make([]byte, 1, 1)
-		binary.LittleEndian.PutUint16(tombstone1, uint16(tombstone))
+		tombstone1[0] = byte(tombstone)
+		// binary.LittleEndian.PutUint16(tombstone1, uint16(tombstone))
 		newRec[2] = tombstone1
 		timestamp := node.timestamp
 		timestamp1 := make([]byte, 8, 8)
