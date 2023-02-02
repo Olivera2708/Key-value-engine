@@ -112,19 +112,6 @@ func main() {
 	cache := structures.CreateLRU(int(cacheSize))
 	//ovo sve treba iz config fajla da se cita
 
-	// fmt.Println("-----------------------------------------------")
-	// fmt.Println("|                   OPCIJE                    |")
-	// fmt.Println("|                                             |")
-	// fmt.Println("| 1. Dodavanje (PUT)                          |")
-	// fmt.Println("| 2. Dobavljenje (GET)                        |")
-	// fmt.Println("| 3. Brisanje (DELETE)                        |")
-	// fmt.Println("| 4. Pretraga (LIST)                          |")
-	// fmt.Println("| 5. Traženje (RANGE SCAN)                    |")
-	// fmt.Println("| 6. Kompakcija (LSM)                         |")
-	// fmt.Println("|                                             |")
-	// fmt.Println("|                       Za izlaz ukucajte 'x' |")
-	// fmt.Println("-----------------------------------------------")
-
 	var a string = ""
 	TokenList := list.New()
 

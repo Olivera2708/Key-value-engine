@@ -97,7 +97,8 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 		if node.next[i] != nil {
 			if node.next[i].key < key {
 				node = *node.next[i]
-			} else if node.next[i].key == key && node.status == 0 {
+				// } else if node.next[i].key == key && node.status == 0 {
+			} else if strings.Split(node.next[i].key, "-")[0] == key && node.status == 0 {
 				pronadjen = true
 				node = *node.next[i]
 				break

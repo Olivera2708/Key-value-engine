@@ -84,7 +84,7 @@ func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *
 
 	bf := CreateBloomFilter(uint(len(keys)), 0.1) //mozda p treba decimalno
 	for i := 0; i < len(keys); i++ {
-		bf.Add(keys[i])
+		bf.Add(strings.Split(keys[i], "-")[0])
 	}
 
 	bf.Write(path)
@@ -200,9 +200,9 @@ func CheckBloomF(path string, key string) bool {
 	return bf.Query(key)
 }
 
-func ReadSummary(path string, key string) (bool, []byte) {
+func ReadSummary(path string, key string) (bool, []byte, string) {
 	if !CheckBloomF(path, key) {
-		return false, nil
+		return false, nil, ""
 	}
 
 	startLen := make([]byte, 8)
@@ -220,39 +220,39 @@ func ReadSummary(path string, key string) (bool, []byte) {
 	endL := binary.LittleEndian.Uint64(endLen)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
-	if key >= string(startIndex) && key <= string(endIndex) {
+	if key >= strings.Split(string(startIndex), "-")[0] && key <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for true {
 			keyLen := make([]byte, 8)
 			_, err = file.Read(keyLen)
 			if err == io.EOF {
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
-				return found, value
+				found, value, new_key := ReadIndex(path, key, pos)
+				return found, value, new_key
 			}
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			if string(key1) > key {
+			if strings.Split(string(key1), "-")[0] > key {
 				file.Seek(-(int64(keyLenNum) + 16), 1)
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
-				return found, value
-			} else if string(key1) == key {
+				found, value, new_key := ReadIndex(path, key, pos)
+				return found, value, new_key
+			} else if strings.Split(string(key1), "-")[0] == key {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadIndex(path, key, pos)
-				return found, value
+				found, value, new_key := ReadIndex(path, key, pos)
+				return found, value, new_key
 			}
 			// file.Seek(8, 1)
 			file.Read(position)
 		}
 	}
-	return false, nil
+	return false, nil, ""
 }
 
-func ReadIndex(path string, key string, position uint64) (bool, []byte) {
+func ReadIndex(path string, key string, position uint64) (bool, []byte, string) {
 	fmt.Println("Indeks -> ", path)
 	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
 	if err != nil {
@@ -267,17 +267,17 @@ func ReadIndex(path string, key string, position uint64) (bool, []byte) {
 		keyLenNum := binary.LittleEndian.Uint64(keyLen)
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
-		if key == string(key1) {
+		if key == strings.Split(string(key1), "-")[0] {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
 			value := ReadSSTable(path, key, pos)
-			return true, value
-		} else if key < string(key1) {
-			return false, nil
+			return true, value, string(key1)
+		} else if key < strings.Split(string(key1), "-")[0] {
+			return false, nil, ""
 		}
 		file.Seek(8, 1)
 	}
-	return false, nil
+	return false, nil, ""
 }
 
 func ReadSSTable(path, key string, position uint64) []byte {

@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type SingleSSTable struct {
@@ -182,7 +183,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 	return &ssst
 }
 
-func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byte) {
+func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byte, string) {
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	defer file.Close()
 	lengthBytes := make([]byte, 8, 8)
@@ -210,7 +211,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 
 	isHere := srs.Query(key)
 	if !isHere {
-		return false, nil
+		return false, nil, ""
 	}
 
 	file.Seek(int64(posSum), 0)
@@ -226,7 +227,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 	endL := binary.LittleEndian.Uint64(endLen)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
-	if key >= string(startIndex) && key <= string(endIndex) {
+	if key >= strings.Split(string(startIndex), "-")[0] && key <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
 
@@ -237,37 +238,37 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			if string(key1) > key {
+			if strings.Split(string(key1), "-")[0] > key {
 				file.Seek(-(int64(keyLenNum) + 16), 1)
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value := ReadSingleIndex(file, key, pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
 
-				return found, value
-			} else if string(key1) == key {
+				return found, value, new_key
+			} else if strings.Split(string(key1), "-")[0] == key {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value := ReadSingleIndex(file, key, pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
 
-				return found, value
+				return found, value, new_key
 			}
 			// file.Seek(8, 1)
 			file.Read(position)
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
 				pos := binary.LittleEndian.Uint64(position)
-				found, value := ReadSingleIndex(file, key, pos, posInd)
-				return found, value
+				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
+				return found, value, new_key
 			}
 		}
 	}
-	return false, nil
+	return false, nil, ""
 
 }
 
-func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, []byte) {
+func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, []byte, string) {
 	fmt.Println("Indeks")
 	file.Seek(int64(posInd), 0) // ups
 	file.Seek(int64(position), 0)
@@ -278,17 +279,17 @@ func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, 
 		keyLenNum := binary.LittleEndian.Uint64(keyLen)
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
-		if key == string(key1) {
+		if key == strings.Split(string(key1), "-")[0] {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
 			value := ReadSingleSSTable(file, key, pos)
-			return true, value
-		} else if key < string(key1) {
-			return false, nil
+			return true, value, string(key1)
+		} else if key < strings.Split(string(key1), "-")[0] {
+			return false, nil, ""
 		}
 		file.Seek(8, 1)
 	}
-	return false, nil
+	return false, nil, ""
 
 }
 

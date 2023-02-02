@@ -4,6 +4,7 @@ import (
 	"Projekat/structures"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int) {
@@ -13,11 +14,11 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 		fmt.Print("Unesite ključ -> ")
 		fmt.Scanln(&key)
 	}
-	found, value := mem.Find(key)
+	found, value, new_key := mem.Find(key)
 	if found {
-		cache.Add(structures.Element{Key: key, Element: value})
+		cache.Add(structures.Element{Key: new_key, Element: value})
 		if value != nil {
-			fmt.Println("Pronađen je i vrednost je ", string(value))
+			WriteFound(new_key, value)
 			return
 		}
 	}
@@ -26,7 +27,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	if found {
 		cache.Add(structures.Element{Key: key, Element: value})
 		return_value = elem.Value.(structures.Element).Element
-		fmt.Println("Pronađen je i vrednost je ", string(return_value))
+		WriteFound(elem.Value.(structures.Element).Key, return_value)
 		return
 	}
 	fmt.Println("Nema cache")
@@ -45,9 +46,10 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				if os.IsNotExist(err) {
 					break
 				}
-				found, value = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
+				found, value, new_key = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
 				if found {
-					fmt.Println("Pronađen je i vrednost je ", string(value))
+					cache.Add(structures.Element{Key: key, Element: value})
+					WriteFound(new_key, value)
 					return
 				}
 			} else {
@@ -55,19 +57,176 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				if os.IsNotExist(err) {
 					break
 				}
-				found, value = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
+				found, value, new_key = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
 				if found {
-					fmt.Println("Pronađen je i vrednost je ", string(value))
+					cache.Add(structures.Element{Key: key, Element: value})
+					WriteFound(new_key, value)
 					return
 				}
-			}
-
-			if found {
-				cache.Add(structures.Element{Key: key, Element: value})
-				fmt.Println("Pronađen je i vrednost je ", string(value))
-				return
 			}
 		}
 	}
 	fmt.Println("Ne postoji vrednost sa datim ključem")
+}
+
+func WriteFound(key string, value []byte) {
+	if strings.Contains(key, "-bloom") {
+		fmt.Println("Pronađen je i vrednost je tipa bloom filter")
+		bf := bloomMenu(key, value)
+		write_value := bf.SerializeBloom()
+		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+	} else if strings.Contains(key, "-cms") {
+		fmt.Println("Pronađen je i vrednost je tipa count min sketch")
+		cms := CMSMenu(key, value)
+		write_value := cms.SerializeCMS()
+		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+	} else if strings.Contains(key, "-simHash") {
+		fmt.Println("Pronađen je i vrednost je tipa sim hash")
+		sh := SHMenu(key, value)
+		write_value := sh.SerializeSimHash()
+		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+	} else if strings.Contains(key, "-hll") {
+		fmt.Println("Pronađen je i vrednost je tipa hyper log log")
+		hll := HLLMenu(key, value)
+		write_value := hll.SerializeHLL()
+		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+	} else {
+		fmt.Println("Pronađen je i vrednost je tipa string -> ", string(value))
+		return
+	}
+}
+
+func bloomMenu(key string, value []byte) *structures.BloomF {
+	bf := structures.DeserializeBloom(value)
+	a := ""
+	fmt.Println("\n-----------------------------------------------")
+	fmt.Println("|                BLOOM FILTER                 |")
+	fmt.Println("|                                             |")
+	fmt.Println("| 1. Dodavanje (ADD)                          |")
+	fmt.Println("| 2. Provera (QUERY)                          |")
+	fmt.Println("|                                             |")
+	fmt.Println("|                       Za izlaz ukucajte 'x' |")
+	fmt.Println("-----------------------------------------------")
+	for {
+		fmt.Print("\nIzaberite opciju -> ")
+		fmt.Scanln(&a)
+
+		if a == "x" {
+			break
+		} else if a == "1" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			bf.Add(input)
+			fmt.Println("Vrednost uneta")
+		} else if a == "2" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			found := bf.Query(input)
+			if found {
+				fmt.Println("Vrednost verovatno pronađena")
+			} else {
+				fmt.Println("Vrednost nije pronađena")
+			}
+		}
+	}
+	return bf
+}
+
+func CMSMenu(key string, value []byte) *structures.CMS {
+	cms := structures.DeserializeCMS(value)
+	a := ""
+	fmt.Println("\n-----------------------------------------------")
+	fmt.Println("|             COUNT MIN SKETCH                |")
+	fmt.Println("|                                             |")
+	fmt.Println("| 1. Dodavanje (ADD)                          |")
+	fmt.Println("| 2. Provera (QUERY)                          |")
+	fmt.Println("|                                             |")
+	fmt.Println("|                       Za izlaz ukucajte 'x' |")
+	fmt.Println("-----------------------------------------------")
+	for {
+		fmt.Print("\nIzaberite opciju -> ")
+		fmt.Scanln(&a)
+
+		if a == "x" {
+			break
+		} else if a == "1" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			cms.Add(input)
+			fmt.Println("Vrednost uneta")
+		} else if a == "2" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			ret_val := cms.Query(input)
+			fmt.Println("Broj ponavljanja vrednosti je -> " + fmt.Sprint(ret_val))
+		}
+	}
+	return cms
+}
+
+func HLLMenu(key string, value []byte) *structures.HLL {
+	hll := structures.DeserializeHLL(value)
+	a := ""
+	fmt.Println("\n-----------------------------------------------")
+	fmt.Println("|               HYPER LOG LOG                 |")
+	fmt.Println("|                                             |")
+	fmt.Println("| 1. Dodavanje (ADD)                          |")
+	fmt.Println("| 2. Procena (ESTIMATE)                       |")
+	fmt.Println("|                                             |")
+	fmt.Println("|                       Za izlaz ukucajte 'x' |")
+	fmt.Println("-----------------------------------------------")
+	for {
+		fmt.Print("\nIzaberite opciju -> ")
+		fmt.Scanln(&a)
+
+		if a == "x" {
+			break
+		} else if a == "1" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			hll.Add(input)
+			fmt.Println("Vrednost uneta")
+		} else if a == "2" {
+			ret_val := hll.Estimate()
+			fmt.Println("Broj različitih vrednosti u strukturi -> " + fmt.Sprint(ret_val))
+		}
+	}
+	return hll
+}
+
+// ovo sve mora da se sredi
+func SHMenu(key string, value []byte) *structures.SimHash {
+	sh := structures.DeserializeSimHash(value)
+	a := ""
+	fmt.Println("\n-----------------------------------------------")
+	fmt.Println("|                  SIM HASH                   |")
+	fmt.Println("|                                             |")
+	fmt.Println("| 1. Dodavanje (ADD)                          |")
+	fmt.Println("| 2. Procena (ESTIMATE)                       |")
+	fmt.Println("|                                             |")
+	fmt.Println("|                       Za izlaz ukucajte 'x' |")
+	fmt.Println("-----------------------------------------------")
+	for {
+		fmt.Print("\nIzaberite opciju -> ")
+		fmt.Scanln(&a)
+
+		if a == "x" {
+			break
+		} else if a == "1" {
+			fmt.Print("Unesite vrednost -> ")
+			input := ""
+			fmt.Scan(&input)
+			sh.Add(input)
+			fmt.Println("Vrednost uneta")
+		} else if a == "2" {
+			// ret_val := hll.Estimate()
+			// fmt.Println("Broj različitih vrednosti u strukturi -> " + fmt.Sprint(ret_val))
+		}
+	}
+	return sh
 }

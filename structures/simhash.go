@@ -35,16 +35,16 @@ func CreateSimHash() SimHash {
 	return SimHash{stopWords}
 }
 
-type Text struct {
-	niz []int
-}
+// type Text struct {
+// 	niz []int
+// }
 
-func CreateText(filename string, simhash SimHash) Text {
-	words := ParseText(filename, simhash)
-	hashovano := HashWords(words)
-	niz := SumHashs(hashovano)
-	return Text{niz}
-}
+// func CreateText(filename string, simhash SimHash) Text {
+// 	words := ParseText(filename, simhash)
+// 	hashovano := HashWords(words)
+// 	niz := SumHashs(hashovano)
+// 	return Text{niz}
+// }
 
 func ParseText(filename string, simhash SimHash) map[string]int {
 	povratna := make(map[string]int)
@@ -65,6 +65,10 @@ func ParseText(filename string, simhash SimHash) map[string]int {
 		log.Fatal(err)
 	}
 	return povratna
+}
+
+func (sh *SimHash) Add(value string) {
+
 }
 
 func HashWords(words map[string]int) map[int]string {
@@ -96,22 +100,22 @@ func SumHashs(hashs map[int]string) []int {
 	return povratna
 }
 
-func (*SimHash) Hemingvej(t1 Text, t2 Text) int {
-	niz1 := t1.niz
-	niz2 := t2.niz
-	niz := make([]int, 256, 256)
+// func (*SimHash) Hemingvej(t1 Text, t2 Text) int {
+// 	niz1 := t1.niz
+// 	niz2 := t2.niz
+// 	niz := make([]int, 256, 256)
 
-	for i := 0; i < 256; i++ {
-		niz[i] = niz1[i] ^ niz2[i]
-	}
-	result := 0
-	for _, val := range niz {
-		if val == 1 {
-			result++
-		}
-	}
-	return result
-}
+// 	for i := 0; i < 256; i++ {
+// 		niz[i] = niz1[i] ^ niz2[i]
+// 	}
+// 	result := 0
+// 	for _, val := range niz {
+// 		if val == 1 {
+// 			result++
+// 		}
+// 	}
+// 	return result
+// }
 
 func GetMD5Hash(text string) string {
 	hash := md5.Sum([]byte(text))

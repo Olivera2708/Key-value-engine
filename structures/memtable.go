@@ -37,16 +37,16 @@ func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix strin
 	return Memtable.data.FindAllPrefixRange(min_prefix, max_prefix)
 }
 
-func (Memtable *Memtable) Find(key string) (found bool, value []byte) {
+func (Memtable *Memtable) Find(key string) (found bool, value []byte, all_key string) {
 	found, element := Memtable.data.Found(key)
 	if found {
 		if element.status == 1 {
-			return false, nil
+			return false, nil, ""
 		} else {
-			return true, element.value
+			return true, element.value, element.key
 		}
 	}
-	return false, nil
+	return false, nil, ""
 }
 
 func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int, summaryBlockingFactor int) {

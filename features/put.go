@@ -38,7 +38,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 		}
 	}
 
-	bloomf.Add(key)
+	bloomf.Add(key) //bitno dodati pre nastavka
 	var value []byte
 
 	if num == 1 {
@@ -73,5 +73,4 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	mem.Flush(generation, sstableType, percentage, summaryBlockingFactor)
 	wal.Flush()
 	bloomf.WriteGlobal()
-
 }

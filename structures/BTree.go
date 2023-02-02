@@ -1,5 +1,7 @@
 package structures
 
+import "strings"
+
 type TreeNode struct {
 	keys     []string
 	vals     [][]byte
@@ -57,7 +59,8 @@ func (btree *BTree) Found(key string) (bool, []byte) {
 	for {
 		//uporedi sa node.keys
 		for i := 0; i < len(node.keys); i++ {
-			if key == node.keys[i] && node.status[i] == 0 {
+			// if key == node.keys[i] && node.status[i] == 0 {
+			if key == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
 				return true, node.vals[i]
 			} else if key < node.keys[i] {
 				if node.isLeaf() {

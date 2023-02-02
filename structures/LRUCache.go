@@ -3,6 +3,7 @@ package structures
 import (
 	"container/list"
 	"fmt"
+	"strings"
 )
 
 type LRUC interface {
@@ -28,7 +29,7 @@ func CreateLRU(size int) *LRUCache {
 }
 
 func (lruc *LRUCache) Found(elem Element) (bool, *list.Element) {
-	if lruc.mapa[elem.Key] != nil {
+	if lruc.mapa[strings.Split(elem.Key, "-")[0]] != nil {
 		return true, lruc.mapa[elem.Key]
 	}
 	return false, nil
