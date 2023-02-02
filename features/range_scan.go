@@ -4,6 +4,7 @@ import (
 	"Projekat/structures"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int, ResultsNumber int) {
@@ -27,6 +28,9 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 			break
 		}
 	}
+
+	max_prefix = strings.Split(max_prefix, "-")[0]
+	min_prefix = strings.Split(min_prefix, "-")[0]
 
 	//u memtable
 	all_keys, all_data := mem.FindAllPrefixRange(min_prefix, max_prefix)

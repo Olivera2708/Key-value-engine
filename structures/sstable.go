@@ -220,7 +220,7 @@ func ReadSummary(path string, key string) (bool, []byte, string) {
 	endL := binary.LittleEndian.Uint64(endLen)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
-	if key >= strings.Split(string(startIndex), "-")[0] && key <= strings.Split(string(endIndex), "-")[0] {
+	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for true {
 			keyLen := make([]byte, 8)
@@ -233,13 +233,13 @@ func ReadSummary(path string, key string) (bool, []byte, string) {
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			if strings.Split(string(key1), "-")[0] > key {
+			if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
 				file.Seek(-(int64(keyLenNum) + 16), 1)
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 				found, value, new_key := ReadIndex(path, key, pos)
 				return found, value, new_key
-			} else if strings.Split(string(key1), "-")[0] == key {
+			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 				found, value, new_key := ReadIndex(path, key, pos)
@@ -267,12 +267,12 @@ func ReadIndex(path string, key string, position uint64) (bool, []byte, string) 
 		keyLenNum := binary.LittleEndian.Uint64(keyLen)
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
-		if key == strings.Split(string(key1), "-")[0] {
+		if strings.Split(key, "-")[0] == strings.Split(string(key1), "-")[0] {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
 			value := ReadSSTable(path, key, pos)
 			return true, value, string(key1)
-		} else if key < strings.Split(string(key1), "-")[0] {
+		} else if strings.Split(key, "-")[0] < strings.Split(string(key1), "-")[0] {
 			return false, nil, ""
 		}
 		file.Seek(8, 1)
@@ -378,7 +378,7 @@ func FindPrefixSummaryMultiple(path string, key string) ([]string, [][]byte) {
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
 
-	if (key >= string(startIndex) || strings.HasPrefix(string(startIndex), key)) && key <= string(endIndex) {
+	if (strings.Split(key, "-")[0] >= string(startIndex) || strings.HasPrefix(string(startIndex), key)) && strings.Split(key, "-")[0] <= string(endIndex) {
 		position := make([]byte, 8)
 		keyLen := make([]byte, 8)
 		_, err = file.Read(keyLen)
@@ -421,7 +421,7 @@ func FindPrefixIndexMultiple(path string, key string, position uint64) ([]string
 			return_data = append(return_data, values...)
 			all_keys = append(all_keys, keys...)
 			break
-		} else if string(key1) > key {
+		} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
 			break
 		}
 		// file.Seek(8, 1)
@@ -457,7 +457,7 @@ func FindPrefixSSTableMultiple(path string, key string, position uint64) ([]stri
 		if strings.HasPrefix(string(key1), key) {
 			all_keys = append(all_keys, string(key1))
 			all_data = append(all_data, value)
-		} else if string(key1) > key {
+		} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
 			break
 		}
 	}
@@ -488,7 +488,7 @@ func FindPrefixSummaryRangeMultiple(path string, min_prefix string, max_prefix s
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
 
-	if (min_prefix <= string(startIndex) && string(startIndex) <= max_prefix) || (min_prefix <= string(endIndex) && string(endIndex) <= max_prefix) || (min_prefix <= string(endIndex) && string(startIndex) <= max_prefix) {
+	if (min_prefix <= strings.Split(string(startIndex), "-")[0] && strings.Split(string(startIndex), "-")[0] <= max_prefix) || (min_prefix <= strings.Split(string(endIndex), "-")[0] && strings.Split(string(endIndex), "-")[0] <= max_prefix) || (min_prefix <= strings.Split(string(endIndex), "-")[0] && strings.Split(string(startIndex), "-")[0] <= max_prefix) {
 		position := make([]byte, 8)
 		keyLen := make([]byte, 8)
 		_, err = file.Read(keyLen)

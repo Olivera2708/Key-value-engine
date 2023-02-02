@@ -19,7 +19,7 @@
     },
 
     "SSTable": {
-        "SSTableType" : 2,
+        "SSTableType" : 1,
         "summaryBlockingFactor" : 20
     },
 

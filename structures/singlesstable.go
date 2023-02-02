@@ -227,7 +227,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 	endL := binary.LittleEndian.Uint64(endLen)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
-	if key >= strings.Split(string(startIndex), "-")[0] && key <= strings.Split(string(endIndex), "-")[0] {
+	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
 
@@ -238,7 +238,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			if strings.Split(string(key1), "-")[0] > key {
+			if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
 				file.Seek(-(int64(keyLenNum) + 16), 1)
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
@@ -246,7 +246,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
 
 				return found, value, new_key
-			} else if strings.Split(string(key1), "-")[0] == key {
+			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
@@ -279,12 +279,12 @@ func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, 
 		keyLenNum := binary.LittleEndian.Uint64(keyLen)
 		key1 := make([]byte, keyLenNum)
 		file.Read(key1)
-		if key == strings.Split(string(key1), "-")[0] {
+		if strings.Split(key, "-")[0] == strings.Split(string(key1), "-")[0] {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
 			value := ReadSingleSSTable(file, key, pos)
 			return true, value, string(key1)
-		} else if key < strings.Split(string(key1), "-")[0] {
+		} else if strings.Split(key, "-")[0] < strings.Split(string(key1), "-")[0] {
 			return false, nil, ""
 		}
 		file.Seek(8, 1)
