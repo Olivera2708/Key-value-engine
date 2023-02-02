@@ -21,7 +21,7 @@ type BloomF struct {
 	K     uint
 	P     float64
 	Set   []byte
-	hashF []HashWithSeed
+	HashF []HashWithSeed
 }
 
 // n je koliko ce biti elemenata, p tacnost
@@ -35,7 +35,7 @@ func CreateBloomFilter(n uint, p float64) *BloomF {
 
 // dodavanje, tako sto upotrebimu svaku hash i postavimo u set na 1
 func (bloomF *BloomF) Add(elem string) {
-	for _, hashFunc := range bloomF.hashF {
+	for _, hashFunc := range bloomF.HashF {
 		i := hashFunc.Hash([]byte(elem)) % uint64(bloomF.M)
 		bloomF.Set[i] = 1
 	}
@@ -43,7 +43,7 @@ func (bloomF *BloomF) Add(elem string) {
 
 // provera da li je za sve hash za dati string u setu 1
 func (bloomF *BloomF) Query(elem string) bool {
-	for _, hashFunc := range bloomF.hashF {
+	for _, hashFunc := range bloomF.HashF {
 		i := hashFunc.Hash([]byte(elem)) % uint64(bloomF.M)
 		if bloomF.Set[i] != 1 {
 			return false

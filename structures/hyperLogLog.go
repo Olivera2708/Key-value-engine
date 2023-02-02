@@ -16,12 +16,13 @@ type HyperLogLog interface {
 	Estimate()
 	emptyCount()
 	Add()
+	SerializeHLL()
 }
 
 type HLL struct {
-	m   uint64
-	p   uint8
-	reg []uint8
+	M   uint64
+	P   uint8
+	Reg []uint8
 }
 
 func CreateHLL(p uint8) HLL {
@@ -32,7 +33,7 @@ func CreateHLL(p uint8) HLL {
 func (hll *HLL) Add(rec string) {
 	hash := ToBinary(GetMD5Hash(rec))
 	key := 0
-	p := hll.p
+	p := hll.P
 	for i := 0; i < int(p); i++ {
 		key += int(hash[i]-'0') * int(math.Pow(2, float64(int(p)-i-1)))
 	}
@@ -44,36 +45,23 @@ func (hll *HLL) Add(rec string) {
 			break
 		}
 	}
-	if hll.reg[key] < uint8(sum) {
-		hll.reg[key] = uint8(sum)
+	if hll.Reg[key] < uint8(sum) {
+		hll.Reg[key] = uint8(sum)
 	}
 }
 
-// func GetMD5Hash(text string) string {
-// 	hash := md5.Sum([]byte(text))
-// 	return hex.EncodeToString(hash[:])
-// }
-
-// func ToBinary(s string) string {
-// 	res := ""
-// 	for _, c := range s {
-// 		res = fmt.Sprintf("%s%.8b", res, c)
-// 	}
-// 	return res
-// }
-
 func (hll *HLL) Estimate() float64 {
 	sum := 0.0
-	for _, val := range hll.reg {
+	for _, val := range hll.Reg {
 		sum += math.Pow(math.Pow(2.0, float64(val)), -1)
 	}
 
-	alpha := 0.7213 / (1.0 + 1.079/float64(hll.m))
-	estimation := alpha * math.Pow(float64(hll.m), 2.0) / sum
-	emptyRegs := hll.emptyCount()
-	if estimation <= 2.5*float64(hll.m) {
+	alpha := 0.7213 / (1.0 + 1.079/float64(hll.M))
+	estimation := alpha * math.Pow(float64(hll.M), 2.0) / sum
+	emptyRegs := hll.EmptyCount()
+	if estimation <= 2.5*float64(hll.M) {
 		if emptyRegs > 0 {
-			estimation = float64(hll.m) * math.Log(float64(hll.m)/float64(emptyRegs))
+			estimation = float64(hll.M) * math.Log(float64(hll.M)/float64(emptyRegs))
 		}
 	} else if estimation > 1/30.0*math.Pow(2.0, 32.0) {
 		estimation = -math.Pow(2.0, 32.0) * math.Log(1.0-estimation/math.Pow(2.0, 32.0))
@@ -81,9 +69,9 @@ func (hll *HLL) Estimate() float64 {
 	return estimation
 }
 
-func (hll *HLL) emptyCount() int {
+func (hll *HLL) EmptyCount() int {
 	sum := 0
-	for _, val := range hll.reg {
+	for _, val := range hll.Reg {
 		if val == 0 {
 			sum++
 		}

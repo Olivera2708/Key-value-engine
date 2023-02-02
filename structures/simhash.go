@@ -27,7 +27,7 @@ func makeStopWords() map[string]bool {
 }
 
 type SimHash struct {
-	stopWords map[string]bool
+	StopWords map[string]bool
 }
 
 func CreateSimHash() SimHash {
@@ -57,7 +57,7 @@ func ParseText(filename string, simhash SimHash) map[string]int {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanWords)
 	for scanner.Scan() {
-		if simhash.stopWords[scanner.Text()] == false { //ako nije u stopWords
+		if simhash.StopWords[scanner.Text()] == false { //ako nije u stopWords
 			povratna[strings.ToLower(scanner.Text())] += 1
 		}
 	}

@@ -18,7 +18,7 @@ type CMS struct {
 	Epsilon float64
 	Delta   float64
 	Set     [][]int
-	hashF   []HashWithSeed
+	HashF   []HashWithSeed
 }
 
 func CreateCMS(p float64, d float64) *CMS {
@@ -36,7 +36,7 @@ func CreateCMS(p float64, d float64) *CMS {
 }
 
 func (cms *CMS) Add(elem string) {
-	for i, hashF := range cms.hashF {
+	for i, hashF := range cms.HashF {
 		j := hashF.Hash([]byte(elem)) % uint64(cms.M)
 		cms.Set[i][j] += 1
 	}
@@ -44,7 +44,7 @@ func (cms *CMS) Add(elem string) {
 
 func (cms *CMS) Query(elem string) int {
 	val := make([]int, cms.K)
-	for i, hashF := range cms.hashF {
+	for i, hashF := range cms.HashF {
 		j := hashF.Hash([]byte(elem)) % uint64(cms.M)
 		val[i] = cms.Set[i][j]
 	}
