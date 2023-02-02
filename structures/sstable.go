@@ -82,7 +82,7 @@ func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *
 		currentPos += 29 + int(len(key1)) + int(len(value))
 	}
 
-	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+	bf := CreateBloomFilter(uint(len(keys)), 0.1) //mozda p treba decimalno
 	for i := 0; i < len(keys); i++ {
 		bf.Add(keys[i])
 	}

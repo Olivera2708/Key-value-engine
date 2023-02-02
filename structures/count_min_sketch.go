@@ -1,6 +1,11 @@
 package structures
 
-import "math"
+import (
+	"bytes"
+	"encoding/gob"
+	"log"
+	"math"
+)
 
 type CountMinSketch interface {
 	Add()
@@ -58,4 +63,26 @@ func CalculateMC(epsilon float64) uint {
 
 func CalculateKC(delta float64) uint {
 	return uint(math.Ceil(math.Log(math.E / delta)))
+}
+
+func (cms *CMS) SerializeCMS() []byte {
+	var bytes bytes.Buffer
+	enc := gob.NewEncoder(&bytes)
+	err := enc.Encode(cms)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
+	return []byte(bytes.Bytes())
+}
+
+func DeserializeCMS(bt []byte) *CMS {
+	var cms CMS
+	var bytes bytes.Buffer
+	bytes.Write(bt)
+	dec := gob.NewDecoder(&bytes)
+	err := dec.Decode(&cms)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	return &cms
 }

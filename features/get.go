@@ -6,8 +6,9 @@ import (
 	"os"
 )
 
-func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int) []byte {
+func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int) {
 	key := ""
+	return_value := []byte{}
 	for key == "" {
 		fmt.Print("Unesite ključ -> ")
 		fmt.Scanln(&key)
@@ -15,19 +16,25 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	found, value := mem.Find(key)
 	if found {
 		cache.Add(structures.Element{Key: key, Element: value})
-		return value
+		if value != nil {
+			fmt.Println("Pronađen je i vrednost je ", string(value))
+			return
+		}
 	}
 	fmt.Println("Nema mem")
 	found, elem := cache.Found(structures.Element{Key: key})
 	if found {
 		cache.Add(structures.Element{Key: key, Element: value})
-		return elem.Value.(structures.Element).Element
+		return_value = elem.Value.(structures.Element).Element
+		fmt.Println("Pronađen je i vrednost je ", string(return_value))
+		return
 	}
 	fmt.Println("Nema cache")
 
 	found = bloomf.Query(key)
 	if !found {
-		return nil
+		fmt.Println("Ne postoji vrednost sa datim ključem")
+		return
 	}
 	fmt.Println("Nema bloom")
 
@@ -39,20 +46,28 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 					break
 				}
 				found, value = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
+				if found {
+					fmt.Println("Pronađen je i vrednost je ", string(value))
+					return
+				}
 			} else {
 				_, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
 				if os.IsNotExist(err) {
 					break
 				}
 				found, value = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
+				if found {
+					fmt.Println("Pronađen je i vrednost je ", string(value))
+					return
+				}
 			}
 
 			if found {
 				cache.Add(structures.Element{Key: key, Element: value})
-				return value
+				fmt.Println("Pronađen je i vrednost je ", string(value))
+				return
 			}
 		}
 	}
-
-	return nil
+	fmt.Println("Ne postoji vrednost sa datim ključem")
 }

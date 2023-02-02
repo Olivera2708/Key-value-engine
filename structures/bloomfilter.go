@@ -1,9 +1,11 @@
 package structures
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/gob"
+	"log"
 	"math"
 	"os"
 	"time"
@@ -91,6 +93,28 @@ func (bloomF *BloomF) Write(path string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (bf *BloomF) SerializeBloom() []byte {
+	var bytes bytes.Buffer
+	enc := gob.NewEncoder(&bytes)
+	err := enc.Encode(bf)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
+	return []byte(bytes.Bytes())
+}
+
+func DeserializeBloom(bt []byte) *BloomF {
+	var bf BloomF
+	var bytes bytes.Buffer
+	bytes.Write(bt)
+	dec := gob.NewDecoder(&bytes)
+	err := dec.Decode(&bf)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	return &bf
 }
 
 func Read(path string) *BloomF {

@@ -35,5 +35,19 @@
 
     "Pagination" : {
         "ResultsNumber" : 5
+    },
+
+    "HLL" : {
+        "p" : 8
+    }, 
+
+    "CMS" : {
+        "p" : 0.1,
+        "d" : 0.01
+    },
+
+    "BloomFilter" : {
+        "n" : 20,
+        "p" : 0.01
     }
 }

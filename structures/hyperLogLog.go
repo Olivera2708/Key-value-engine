@@ -1,6 +1,9 @@
 package structures
 
 import (
+	"bytes"
+	"encoding/gob"
+	"log"
 	"math"
 )
 
@@ -86,4 +89,26 @@ func (hll *HLL) emptyCount() int {
 		}
 	}
 	return sum
+}
+
+func (hll *HLL) SerializeHLL() []byte {
+	var bytes bytes.Buffer
+	enc := gob.NewEncoder(&bytes)
+	err := enc.Encode(hll)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
+	return []byte(bytes.Bytes())
+}
+
+func DeserializeHLL(bt []byte) *HLL {
+	var hll HLL
+	var bytes bytes.Buffer
+	bytes.Write(bt)
+	dec := gob.NewDecoder(&bytes)
+	err := dec.Decode(&hll)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	return &hll
 }

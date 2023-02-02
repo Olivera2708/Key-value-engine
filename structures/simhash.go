@@ -2,7 +2,9 @@ package structures
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
+	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -122,4 +124,26 @@ func ToBinary(s string) string {
 		res = fmt.Sprintf("%s%.8b", res, c)
 	}
 	return res
+}
+
+func (simH *SimHash) SerializeSimHash() []byte {
+	var bytes bytes.Buffer
+	enc := gob.NewEncoder(&bytes)
+	err := enc.Encode(simH)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
+	return []byte(bytes.Bytes())
+}
+
+func DeserializeSimHash(bt []byte) *SimHash {
+	var simH SimHash
+	var bytes bytes.Buffer
+	bytes.Write(bt)
+	dec := gob.NewDecoder(&bytes)
+	err := dec.Decode(&simH)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	return &simH
 }
