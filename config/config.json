@@ -1,7 +1,7 @@
 {   
     "WAL": {
-        "WALLowWaterMark" : 1,
-        "WALSegmentationFactor" : 5
+        "WALLowWaterMark" : 2,
+        "WALSegmentationFactor" : 50
     },
 
     "SkipList": {
@@ -9,7 +9,7 @@
     },
 
     "MemTable": {
-        "memTableMaxCap" : 7,    
+        "memTableMaxCap" : 5,    
         "memTableFlush" : 80,
         "memTableType" : 1
     },

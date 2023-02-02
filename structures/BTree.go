@@ -60,7 +60,7 @@ func (btree *BTree) Found(key string) (bool, []byte) {
 		//uporedi sa node.keys
 		for i := 0; i < len(node.keys); i++ {
 			// if key == node.keys[i] && node.status[i] == 0 {
-			if key == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
+			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
 				return true, node.vals[i]
 			} else if key < node.keys[i] {
 				if node.isLeaf() {
