@@ -3,6 +3,7 @@ package features
 import (
 	"Projekat/structures"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"os"
@@ -286,7 +287,10 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 
 		fileFinal.Seek(0, 2)
 
+		positionsSum := make([]int, len(keys))
 		for i := 0; i < len(keys); i++ {
+
+			positionsSum[i] = currentPos
 			keySize := make([]byte, 8, 8)
 			binary.LittleEndian.PutUint64(keySize, uint64(len(keys[i])))
 
@@ -305,14 +309,57 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 		fileFinal.Write(posSum)
 		fileFinal.Seek(0, 2)
 
-		//path := "data/singlesstables/usertable-" + fmt.Sprint(lv+1) + "-" + fmt.Sprint(generation)
+		len1SumBytes := make([]byte, 8, 8)
+		len2SumBytes := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(len1SumBytes, uint64(len(keys[0])))
+		binary.LittleEndian.PutUint64(len2SumBytes, uint64(len(keys[len(keys)-1])))
 
-		// bf := structures.CreateBloomFilter(uint(len(keys)), 2)
-		// for i := 0; i < len(keys); i++ {
-		// 	bf.Add(keys[i])
-		// }
-		// bf.Write(path)
-		// structures.CreateIndex(keys, positions, path, summaryBlockingFactor)
+		fileFinal.Write(len1SumBytes)
+		fileFinal.Write([]byte(keys[0]))
+
+		fileFinal.Write(len2SumBytes)
+		fileFinal.Write([]byte(keys[len(keys)-1]))
+
+		currentPos += 16 + len(keys[0]) + len(keys[len(keys)-1])
+
+		for i := 0; i < len(positionsSum); i += 1 {
+			if i%summaryBlockingFactor == 0 {
+
+				keySize1 := make([]byte, 8, 8)
+				binary.LittleEndian.PutUint64(keySize1, uint64(len(keys[i])))
+
+				key1 := []byte(keys[i])
+
+				posSum1 := make([]byte, 8, 8)
+				binary.LittleEndian.PutUint64(posSum1, uint64(positionsSum[i]))
+
+				fileFinal.Write(keySize1)
+				fileFinal.Write(key1)
+				fileFinal.Write(posSum1)
+
+				currentPos += 16 + len([]byte(keys[i]))
+			}
+		}
+
+		fileFinal.Seek(24, 0)
+		posBF := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(posBF, uint64(currentPos))
+
+		fileFinal.Write(posBF)
+		fileFinal.Seek(0, 2)
+
+		bf := structures.CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+		for i := 0; i < len(keys); i++ {
+			bf.Add(keys[i])
+		}
+
+		fileFinal.Close()
+
+		encoder := gob.NewEncoder(fileFinal)
+		err = encoder.Encode(bf)
+		if err != nil {
+			panic(err)
+		}
 
 		if len(terminate_list) > 1 {
 			for q := 0; q < len(terminate_list); q++ {
