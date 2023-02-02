@@ -12,10 +12,10 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	for true {
 		fmt.Print("Unesite ključ -> ")
 		fmt.Scanln(&key)
-		if !strings.Contains(key, "-") {
+		if !strings.Contains(key, "-") && strings.ReplaceAll(key, " ", "") != "" {
 			break
 		} else {
-			fmt.Println("Znak '-' nije moguće koristiti")
+			fmt.Println("Neispravan ključ")
 		}
 	}
 

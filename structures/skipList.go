@@ -95,7 +95,7 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
 	for i := s.height - 1; i >= 0; { //stavili smo -1
 		if node.next[i] != nil {
-			if node.next[i].key < key {
+			if strings.Split(node.next[i].key, "-")[0] < strings.Split(key, "-")[0] {
 				node = *node.next[i]
 				// } else if node.next[i].key == key && node.status == 0 {
 			} else if strings.Split(node.next[i].key, "-")[0] == strings.Split(key, "-")[0] && node.status == 0 {
@@ -116,7 +116,7 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
 	for i := s.height - 1; i >= 0; { //dodali -1
 		if node.next[i] != nil {
-			if node.next[i].key < key {
+			if strings.Split(node.next[i].key, "-")[0] < strings.Split(key, "-")[0] {
 				node = *node.next[i]
 			} else if strings.Split(node.next[i].key, "-")[0] == strings.Split(key, "-")[0] {
 				node.next[i].key = key
