@@ -7,11 +7,6 @@ import (
 	"math"
 )
 
-const (
-	HLL_MIN_PRECISION = 4
-	HLL_MAX_PRECISION = 16
-)
-
 type HyperLogLog interface {
 	Estimate()
 	emptyCount()
@@ -45,9 +40,7 @@ func (hll *HLL) Add(rec string) {
 			break
 		}
 	}
-	if hll.Reg[key] < uint8(sum) {
-		hll.Reg[key] = uint8(sum)
-	}
+	hll.Reg[key] = uint8(sum)
 }
 
 func (hll *HLL) Estimate() float64 {
@@ -58,18 +51,18 @@ func (hll *HLL) Estimate() float64 {
 
 	alpha := 0.7213 / (1.0 + 1.079/float64(hll.M))
 	estimation := alpha * math.Pow(float64(hll.M), 2.0) / sum
-	emptyRegs := hll.EmptyCount()
-	if estimation <= 2.5*float64(hll.M) {
+	emptyRegs := hll.emptyCount()
+	if estimation <= 2.5*float64(hll.M) { // do small range correction
 		if emptyRegs > 0 {
 			estimation = float64(hll.M) * math.Log(float64(hll.M)/float64(emptyRegs))
 		}
-	} else if estimation > 1/30.0*math.Pow(2.0, 32.0) {
+	} else if estimation > 1/30.0*math.Pow(2.0, 32.0) { // do large range correction
 		estimation = -math.Pow(2.0, 32.0) * math.Log(1.0-estimation/math.Pow(2.0, 32.0))
 	}
 	return estimation
 }
 
-func (hll *HLL) EmptyCount() int {
+func (hll *HLL) emptyCount() int {
 	sum := 0
 	for _, val := range hll.Reg {
 		if val == 0 {
