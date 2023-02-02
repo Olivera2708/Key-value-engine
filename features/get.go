@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int) {
+func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int, generation int, wal *structures.WAL, precentage int) {
 	key := ""
 	return_value := []byte{}
 	for key == "" {
@@ -18,7 +18,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	if found {
 		cache.Add(structures.Element{Key: new_key, Element: value})
 		if value != nil {
-			WriteFound(new_key, value)
+			WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 			return
 		}
 	}
@@ -27,7 +27,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	if found {
 		cache.Add(structures.Element{Key: key, Element: value})
 		return_value = elem.Value.(structures.Element).Element
-		WriteFound(elem.Value.(structures.Element).Key, return_value)
+		WriteFound(elem.Value.(structures.Element).Key, return_value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 		return
 	}
 	fmt.Println("Nema cache")
@@ -49,7 +49,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				found, value, new_key = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
 				if found {
 					cache.Add(structures.Element{Key: key, Element: value})
-					WriteFound(new_key, value)
+					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 					return
 				}
 			} else {
@@ -60,7 +60,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				found, value, new_key = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
 				if found {
 					cache.Add(structures.Element{Key: key, Element: value})
-					WriteFound(new_key, value)
+					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 					return
 				}
 			}
@@ -69,31 +69,36 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	fmt.Println("Ne postoji vrednost sa datim ključem")
 }
 
-func WriteFound(key string, value []byte) {
+func WriteFound(key string, value []byte, wal *structures.WAL, mem *structures.Memtable, generation *int, sstableType int, percentage int, summaryBlockingFactor int) {
+	write_value := []byte{}
 	if strings.Contains(key, "-bloom") {
 		fmt.Println("Pronađen je i vrednost je tipa bloom filter")
 		bf := bloomMenu(key, value)
-		write_value := bf.SerializeBloom()
-		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+		write_value = bf.SerializeBloom()
 	} else if strings.Contains(key, "-cms") {
 		fmt.Println("Pronađen je i vrednost je tipa count min sketch")
 		cms := CMSMenu(key, value)
-		write_value := cms.SerializeCMS()
-		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+		write_value = cms.SerializeCMS()
 	} else if strings.Contains(key, "-simHash") {
 		fmt.Println("Pronađen je i vrednost je tipa sim hash")
 		sh := SHMenu(key, value)
-		write_value := sh.SerializeSimHash()
-		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+		write_value = sh.SerializeSimHash()
 	} else if strings.Contains(key, "-hll") {
 		fmt.Println("Pronađen je i vrednost je tipa hyper log log")
 		hll := HLLMenu(key, value)
-		write_value := hll.SerializeHLL()
-		fmt.Println(write_value) //ovde treba umesto ovog da se sacuva
+		write_value = hll.SerializeHLL()
 	} else {
 		fmt.Println("Pronađen je i vrednost je tipa string -> ", string(value))
 		return
 	}
+	WriteUpdated(key, write_value, wal, mem, generation, sstableType, percentage, summaryBlockingFactor)
+}
+
+func WriteUpdated(key string, value []byte, wal *structures.WAL, mem *structures.Memtable, generation *int, sstableType int, percentage int, summaryBlockingFactor int) {
+	timestamp := wal.Add(key, value, 0)
+	mem.Add(key, value, 0, timestamp) //0 znaci da je aktivan
+	mem.Flush(generation, sstableType, percentage, summaryBlockingFactor)
+	wal.Flush()
 }
 
 func bloomMenu(key string, value []byte) *structures.BloomF {
@@ -202,7 +207,7 @@ func HLLMenu(key string, value []byte) *structures.HLL {
 // ovo sve mora da se sredi
 func SHMenu(key string, value []byte) *structures.SimHash {
 	sh := structures.DeserializeSimHash(value)
-	a := ""
+	// a := ""
 	fmt.Println("\n-----------------------------------------------")
 	fmt.Println("|                  SIM HASH                   |")
 	fmt.Println("|                                             |")
@@ -211,22 +216,22 @@ func SHMenu(key string, value []byte) *structures.SimHash {
 	fmt.Println("|                                             |")
 	fmt.Println("|                       Za izlaz ukucajte 'x' |")
 	fmt.Println("-----------------------------------------------")
-	for {
-		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+	// for {
+	// 	fmt.Print("\nIzaberite opciju -> ")
+	// 	fmt.Scanln(&a)
 
-		if a == "x" {
-			break
-		} else if a == "1" {
-			fmt.Print("Unesite vrednost -> ")
-			input := ""
-			fmt.Scan(&input)
-			sh.Add(input)
-			fmt.Println("Vrednost uneta")
-		} else if a == "2" {
-			// ret_val := hll.Estimate()
-			// fmt.Println("Broj različitih vrednosti u strukturi -> " + fmt.Sprint(ret_val))
-		}
-	}
+	// 	if a == "x" {
+	// 		break
+	// 	} else if a == "1" {
+	// 		fmt.Print("Unesite vrednost -> ")
+	// 		input := ""
+	// 		fmt.Scan(&input)
+	// 		sh.Add(input)
+	// 		fmt.Println("Vrednost uneta")
+	// 	} else if a == "2" {
+	// 		ret_val := hll.Estimate()
+	// 		fmt.Println("Broj različitih vrednosti u strukturi -> " + fmt.Sprint(ret_val))
+	// 	}
+	// }
 	return sh
 }

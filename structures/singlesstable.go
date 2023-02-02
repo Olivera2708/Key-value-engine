@@ -170,7 +170,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 
 	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
 	for i := 0; i < len(keys); i++ {
-		bf.Add(keys[i])
+		bf.Add(strings.Split(keys[i], "-")[0])
 	}
 
 	encoder := gob.NewEncoder(outFile)

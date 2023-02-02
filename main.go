@@ -139,7 +139,7 @@ func main() {
 			case "1":
 				features.PUT(wal, mem, cache, &generation, *bloom, int(SSTableType), int(memTableFlush), int(summaryBlockingFactor), int(HLLp), CMSp, CMSd, int(BFn), BFp)
 			case "2":
-				features.GET(mem, cache, *bloom, int(SSTableType), int(LSMTreeLevel), int(summaryBlockingFactor))
+				features.GET(mem, cache, *bloom, int(SSTableType), int(LSMTreeLevel), int(summaryBlockingFactor), int(generation), wal, int(memTableFlush))
 			case "3":
 				features.DELETE(wal, mem, cache)
 				fmt.Println("Uspešno obrisan")
