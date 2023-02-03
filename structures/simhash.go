@@ -21,13 +21,17 @@ func CreateSimHash() SimHash {
 func (sh *SimHash) Add(key string, value string) {
 	all_words := strings.Split(value, " ")
 	new_val := make(map[string]int)
+	//dodelimo tezine recima, broj ponavljanja
 	for i := 0; i < len(all_words); i++ {
 		new_val[strings.ToLower(all_words[i])] += 1
 	}
-	hashed_words := SumHashs(HashWords(new_val))
-	sh.KeyVal[key] = hashed_words
+	hashed_words := HashWords(new_val)
+	convert_val := Convert(hashed_words)
+	sum_val := SumCol(convert_val)
+	sh.KeyVal[key] = sum_val
 }
 
+// b-bitni hash za svaki el
 func HashWords(words map[string]int) map[int]string {
 	hash := make(map[int]string)
 	for i := range words {
@@ -36,28 +40,45 @@ func HashWords(words map[string]int) map[int]string {
 	return hash
 }
 
-func SumHashs(hashs map[int]string) []int {
-	povratna := make([]int, 256, 256)
-	for s, h := range hashs {
-		for i := 0; i < len(h); i++ {
-			if h[i] == '1' {
-				povratna[i] += s
+// ako je 0 onda je -1 u nizu
+func Convert(hashs map[int]string) map[int][]int {
+	return_val := make(map[int][]int)
+	for key, val := range hashs {
+		new_arr := make([]int, 256)
+		for i := 0; i < len(val); i++ {
+			if val[i] == '0' {
+				new_arr[i] = -1
 			} else {
-				povratna[i] -= s
+				new_arr[i] = 1
 			}
 		}
+		return_val[key] = new_arr
 	}
-	for i, val := range povratna {
-		if val > 0 {
-			povratna[i] = 1
-		} else {
-			povratna[i] = 0
-		}
-	}
-	return povratna
+	return return_val
 }
 
-// Hemingovo rastojanje
+// sumiramo vrednosti iz kolona, mnozeci tezine
+func SumCol(hashs map[int][]int) []int {
+	return_val := make([]int, 256)
+	for i := 0; i < 256; i++ {
+		for key, val := range hashs {
+			return_val[i] += key * val[i]
+		}
+	}
+
+	//konverujemo u 0 i 1
+	new_arr := make([]int, 256)
+	for i := 0; i < 256; i++ {
+		if return_val[i] < 0 {
+			new_arr[i] = 0
+		} else {
+			new_arr[i] = 1
+		}
+	}
+	return new_arr
+}
+
+// Hemingovo rastojanje, xor operacija
 func (sh *SimHash) Compare(key1 string, key2 string) int {
 	words1, ok := sh.KeyVal[key1]
 	if !ok {
@@ -67,7 +88,7 @@ func (sh *SimHash) Compare(key1 string, key2 string) int {
 	if !ok {
 		return -1
 	}
-	arr := make([]int, 256, 256)
+	arr := make([]int, 256)
 
 	for i := 0; i < 256; i++ {
 		arr[i] = words1[i] ^ words2[i]
