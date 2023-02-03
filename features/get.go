@@ -2,6 +2,7 @@ package features
 
 import (
 	"Projekat/structures"
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -117,7 +118,7 @@ func bloomMenu(key string, value []byte) *structures.BloomF {
 	fmt.Println("-----------------------------------------------")
 	for {
 		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+		fmt.Scan(&a)
 
 		if a == "x" {
 			break
@@ -155,7 +156,7 @@ func CMSMenu(key string, value []byte) *structures.CMS {
 	fmt.Println("-----------------------------------------------")
 	for {
 		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+		fmt.Scan(&a)
 
 		if a == "x" {
 			break
@@ -189,7 +190,7 @@ func HLLMenu(key string, value []byte) *structures.HLL {
 	fmt.Println("-----------------------------------------------")
 	for {
 		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+		fmt.Scan(&a)
 
 		if a == "x" {
 			break
@@ -210,31 +211,47 @@ func HLLMenu(key string, value []byte) *structures.HLL {
 // ovo sve mora da se sredi
 func SHMenu(key string, value []byte) *structures.SimHash {
 	sh := structures.DeserializeSimHash(value)
-	// a := ""
+	a := ""
 	fmt.Println("\n-----------------------------------------------")
 	fmt.Println("|                  SIM HASH                   |")
 	fmt.Println("|                                             |")
 	fmt.Println("| 1. Dodavanje (ADD)                          |")
-	fmt.Println("| 2. Procena (ESTIMATE)                       |")
+	fmt.Println("| 2. Hemingova udaljenost                     |")
 	fmt.Println("|                                             |")
 	fmt.Println("|                       Za izlaz ukucajte 'x' |")
 	fmt.Println("-----------------------------------------------")
-	// for {
-	// 	fmt.Print("\nIzaberite opciju -> ")
-	// 	fmt.Scanln(&a)
+	for {
+		fmt.Print("\nIzaberite opciju -> ")
+		fmt.Scan(&a)
 
-	// 	if a == "x" {
-	// 		break
-	// 	} else if a == "1" {
-	// 		fmt.Print("Unesite vrednost -> ")
-	// 		input := ""
-	// 		fmt.Scan(&input)
-	// 		sh.Add(input)
-	// 		fmt.Println("Vrednost uneta")
-	// 	} else if a == "2" {
-	// 		ret_val := hll.Estimate()
-	// 		fmt.Println("Broj različitih vrednosti u strukturi -> " + fmt.Sprint(ret_val))
-	// 	}
-	// }
+		if a == "x" {
+			break
+		} else if a == "1" {
+			fmt.Print("Unesite ključ -> ")
+			input_key := ""
+			fmt.Scanln(&input_key)
+			fmt.Print("Unesite tekst -> ")
+			input_val := ""
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				input_val = scanner.Text()
+			}
+			sh.Add(input_key, input_val)
+			fmt.Println("Vrednost uneta")
+		} else if a == "2" {
+			fmt.Print("Unesite prvi ključ -> ")
+			input_key1 := ""
+			fmt.Scan(&input_key1)
+			fmt.Print("Unesite drugi ključ -> ")
+			input_key2 := ""
+			fmt.Scan(&input_key2)
+			ret_val := sh.Compare(input_key1, input_key2)
+			if ret_val == -1 {
+				fmt.Println("Nije pronađen element sa zadatim ključem")
+			} else {
+				fmt.Println("Hemingova udaljenost -> " + fmt.Sprint(ret_val))
+			}
+		}
+	}
 	return sh
 }
