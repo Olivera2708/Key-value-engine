@@ -36,7 +36,6 @@ func tocken_bucket(time_flush int, number int, all_el *list.List) bool {
 
 func main() {
 	generation := 0
-	WALLLowWaterMark := 1.0
 	WALSegmentationFactor := 5.0
 	skipListMaxHeight := 5.0
 	memTableMaxCap := 5.0
@@ -64,7 +63,6 @@ func main() {
 			log.Fatal(err)
 		}
 
-		WALLLowWaterMark = payload["WAL"]["WALLowWaterMark"]
 		WALSegmentationFactor = payload["WAL"]["WALSegmentationFactor"]
 		skipListMaxHeight = payload["SkipList"]["skipListMaxHeight"]
 		memTableMaxCap = payload["MemTable"]["memTableMaxCap"]
@@ -105,7 +103,7 @@ func main() {
 	}
 
 	//inicijalizacija
-	wal := structures.CreateWAL(uint(WALSegmentationFactor), int(WALLLowWaterMark))
+	wal := structures.CreateWAL(uint(WALSegmentationFactor))
 	mem := structures.CreateMemtable(int(skipListMaxHeight), uint(memTableMaxCap), 0)
 	wal.ReadAll(*mem, generation, int(SSTableType))
 	bloom := structures.ReadAll()

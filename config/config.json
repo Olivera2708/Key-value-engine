@@ -1,7 +1,6 @@
 {   
     "WAL": {
-        "WALLowWaterMark" : 2,
-        "WALSegmentationFactor" : 50
+        "WALSegmentationFactor" : 5
     },
 
     "SkipList": {

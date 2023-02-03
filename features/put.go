@@ -70,7 +70,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	elem := structures.Element{Key: key, Element: value}
 	cache.Add(elem)
 
-	mem.Flush(generation, sstableType, percentage, summaryBlockingFactor)
+	wal.Low_water_mark = mem.Flush(generation, sstableType, percentage, summaryBlockingFactor)
 	wal.Flush()
 	bloomf.WriteGlobal()
 }

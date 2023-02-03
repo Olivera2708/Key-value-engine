@@ -243,14 +243,14 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
 
 				return found, value, new_key
 			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
 
 				return found, value, new_key
 			}
@@ -259,7 +259,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
 				pos := binary.LittleEndian.Uint64(position)
-				found, value, new_key := ReadSingleIndex(file, key, pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
 				return found, value, new_key
 			}
 		}
@@ -282,7 +282,7 @@ func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, 
 		if strings.Split(key, "-")[0] == strings.Split(string(key1), "-")[0] {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
-			value := ReadSingleSSTable(file, key, pos)
+			value := ReadSingleSSTable(file, string(key1), pos)
 			return true, value, string(key1)
 		} else if strings.Split(key, "-")[0] < strings.Split(string(key1), "-")[0] {
 			return false, nil, ""

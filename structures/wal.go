@@ -43,16 +43,13 @@ func CRC32(data []byte) uint32 {
 type WAL struct {
 	segment_size   uint          //maksimalna velicina jednog segmenta
 	segments       []fs.DirEntry //lista za fajlove
-	low_water_mark int           //koliko segmenata se ne brise
+	Low_water_mark int           //koliko segmenata se ne brise
 }
 
-func CreateWAL(ss uint, lwm int) *WAL {
+func CreateWAL(ss uint) *WAL {
 
 	segments, err := os.ReadDir(DIRNAME)
 	if len(segments) == 0 {
-
-		//OVO NE RADI ZA PRAZAN DIR <<<<
-
 		file, err := os.OpenFile(DIRNAME+"/wal_00001.log", os.O_CREATE, 0666)
 		if err != nil {
 			log.Fatal(err)
@@ -66,7 +63,7 @@ func CreateWAL(ss uint, lwm int) *WAL {
 		log.Fatal(err)
 	}
 
-	return &WAL{ss, segments, lwm}
+	return &WAL{ss, segments, 0}
 }
 
 func NumberOfRecords(filename string) uint {
@@ -255,17 +252,18 @@ func (wal *WAL) ReadAll(mem Memtable, generation int, sstype int) {
 
 func (wal *WAL) Flush() {
 	n := len(wal.segments)
-	if n > wal.low_water_mark {
-		new := make([]fs.DirEntry, wal.low_water_mark)
+	if wal.Low_water_mark != 0 {
+		new := make([]fs.DirEntry, 0)
 
 		j := 0
-		for i := n - wal.low_water_mark; i < n; i++ {
-			new[j] = wal.segments[i]
+		for i := n - wal.Low_water_mark + 1; i < n; i++ {
+			new = append(new, wal.segments[i])
+			// new[j] = wal.segments[i]
 			j++
 		}
 
 		//obrise suvisne
-		for i := 0; i < n-wal.low_water_mark; i++ {
+		for i := 0; i < n-wal.Low_water_mark+1; i++ {
 			err := os.Remove(DIRNAME + "/" + wal.segments[i].Name())
 			if err != nil {
 				log.Fatal(err)
@@ -273,7 +271,7 @@ func (wal *WAL) Flush() {
 		}
 
 		//preimenuje preostale
-		for i := 0; i < wal.low_water_mark; i++ {
+		for i := 0; i < len(new); i++ {
 			broj := strconv.FormatUint(uint64(i)+1, 10)
 			for i := len(broj); i < CIFARA_U_NAZIVU; i++ {
 				broj = "0" + broj
@@ -290,5 +288,19 @@ func (wal *WAL) Flush() {
 			log.Fatal(err)
 		}
 		wal.segments = segmenti
+
+		if len(wal.segments) == 0 {
+			file, err := os.OpenFile(DIRNAME+"/wal_00001.log", os.O_CREATE, 0666)
+			if err != nil {
+				log.Fatal(err)
+			}
+			segments, err := os.ReadDir(DIRNAME)
+			if err != nil {
+				log.Fatal(err)
+			}
+			file.Close()
+			wal.segments = segments
+		}
 	}
+	wal.Low_water_mark = 0
 }
