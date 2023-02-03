@@ -2,6 +2,7 @@ package main
 
 import (
 	"Projekat/features"
+	"Projekat/global"
 	"Projekat/structures"
 	"container/list"
 	"encoding/json"
@@ -37,10 +38,10 @@ func tocken_bucket(time_flush int, number int, all_el *list.List) bool {
 func main() {
 	generation := 0
 	WALSegmentationFactor := 5.0
-	skipListMaxHeight := 5.0
+	global.SkipListMaxHeight = 5
 	memTableMaxCap := 5.0
 	memTableFlush := 80.0
-	//memTableType := 1 // skipList -> 1, BStablo -> 2
+	global.MemTableDataType = 1 // skipList -> 1, BStablo -> 2
 	cacheSize := 14.0
 	SSTableType := 2.0 // single -> 1, multiple -> 2
 	summaryBlockingFactor := 20.0
@@ -64,10 +65,10 @@ func main() {
 		}
 
 		WALSegmentationFactor = payload["WAL"]["WALSegmentationFactor"]
-		skipListMaxHeight = payload["SkipList"]["skipListMaxHeight"]
+		global.SkipListMaxHeight = int(payload["SkipList"]["skipListMaxHeight"])
 		memTableMaxCap = payload["MemTable"]["memTableMaxCap"]
 		memTableFlush = payload["MemTable"]["memTableFlush"]
-		//memTableType = payload["MemTable"]["memTableType"]
+		global.MemTableDataType = int(payload["MemTable"]["memTableType"])
 		cacheSize = payload["LRUCache"]["cacheSize"]
 		SSTableType = payload["SSTable"]["SSTableType"]
 		summaryBlockingFactor = payload["SSTable"]["summaryBlockingFactor"]
@@ -104,7 +105,7 @@ func main() {
 
 	//inicijalizacija
 	wal := structures.CreateWAL(uint(WALSegmentationFactor))
-	mem := structures.CreateMemtable(int(skipListMaxHeight), uint(memTableMaxCap), 0)
+	mem := structures.CreateMemtable(global.SkipListMaxHeight, uint(memTableMaxCap), 0)
 	wal.ReadAll(*mem, generation, int(SSTableType))
 	bloom := structures.ReadAll()
 	cache := structures.CreateLRU(int(cacheSize))

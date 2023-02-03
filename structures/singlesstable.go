@@ -184,6 +184,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 }
 
 func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byte, string) {
+	fmt.Println("Summary")
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	defer file.Close()
 	lengthBytes := make([]byte, 8, 8)
@@ -227,6 +228,9 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 	endL := binary.LittleEndian.Uint64(endLen)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
+
+	fmt.Println(string(startIndex))
+	fmt.Println(string(endIndex))
 	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {

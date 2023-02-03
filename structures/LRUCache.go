@@ -2,7 +2,6 @@ package structures
 
 import (
 	"container/list"
-	"fmt"
 	"strings"
 )
 
@@ -20,8 +19,9 @@ type LRUCache struct {
 }
 
 type Element struct {
-	Key     string
-	Element []byte
+	Key  string
+	Elem []byte
+	Type string
 }
 
 func CreateLRU(size int) *LRUCache {
@@ -29,16 +29,23 @@ func CreateLRU(size int) *LRUCache {
 }
 
 func (lruc *LRUCache) Found(elem Element) (bool, *list.Element) {
-	if lruc.mapa[strings.Split(elem.Key, "-")[0]] != nil {
+	elem.Key = strings.Split(elem.Key, "-")[0]
+	if lruc.mapa[elem.Key] != nil {
 		return true, lruc.mapa[elem.Key]
 	}
 	return false, nil
 }
 
 func (lruc *LRUCache) Add(elem Element) {
+	elem.Key = strings.Split(elem.Key, "-")[0]
+	// if strings.Contains(elem.Key, "-") {
+	// 	elem.Type = strings.Split(elem.Key, "-")[1]
+	// } else {
+	// 	elem.Type = ""
+	// }
 	found, el := lruc.Found(elem)
 	if found {
-		lruc.Move(el, elem.Element)
+		lruc.Move(el, elem.Elem)
 	} else {
 		e := lruc.lista.PushFront(elem)
 		lruc.mapa[elem.Key] = e
@@ -51,6 +58,7 @@ func (lruc *LRUCache) Add(elem Element) {
 }
 
 func (lruc *LRUCache) Delete(el Element) bool {
+	el.Key = strings.Split(el.Key, "-")[0]
 	found, elem := lruc.Found(el)
 	if found {
 		lruc.lista.Remove(elem)
@@ -61,16 +69,16 @@ func (lruc *LRUCache) Delete(el Element) bool {
 
 func (lruc *LRUCache) Move(elem *list.Element, val []byte) {
 	e := elem.Value.(Element)
-	e.Element = val
+	e.Elem = val
 	elem.Value = e
 	lruc.lista.MoveToFront(elem)
 }
 
-func (lruc *LRUCache) Print(lista *list.List) {
-	fmt.Println()
-	test := lista.Front()
-	for i := 0; i < lista.Len(); i++ {
-		fmt.Println(test.Value.(Element).Key + ": " + string(test.Value.(Element).Element))
-		test = test.Next()
-	}
-}
+// func (lruc *LRUCache) Print(lista *list.List) {
+// 	fmt.Println()
+// 	test := lista.Front()
+// 	for i := 0; i < lista.Len(); i++ {
+// 		fmt.Println(test.Value.(Element).Key + ": " + string(test.Value.(Element).Element))
+// 		test = test.Next()
+// 	}
+// }

@@ -16,7 +16,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	}
 	found, value, new_key := mem.Find(key)
 	if found {
-		cache.Add(structures.Element{Key: new_key, Element: value})
+		cache.Add(structures.Element{Key: new_key, Elem: value})
 		if value != nil {
 			WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 			return
@@ -25,9 +25,12 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	fmt.Println("Nema mem")
 	found, elem := cache.Found(structures.Element{Key: key})
 	if found {
-		cache.Add(structures.Element{Key: key, Element: value})
-		return_value = elem.Value.(structures.Element).Element
-		WriteFound(elem.Value.(structures.Element).Key, return_value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
+		return_value = elem.Value.(structures.Element).Elem
+		new_key = key
+		if elem.Value.(structures.Element).Type != "" {
+			new_key += "-" + elem.Value.(structures.Element).Type
+		}
+		WriteFound(new_key, return_value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 		return
 	}
 	fmt.Println("Nema cache")
@@ -48,7 +51,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				}
 				found, value, new_key = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
 				if found {
-					cache.Add(structures.Element{Key: key, Element: value})
+					cache.Add(structures.Element{Key: key, Elem: value})
 					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 					return
 				}
@@ -59,7 +62,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 				}
 				found, value, new_key = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
 				if found {
-					cache.Add(structures.Element{Key: key, Element: value})
+					cache.Add(structures.Element{Key: key, Elem: value})
 					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 					return
 				}

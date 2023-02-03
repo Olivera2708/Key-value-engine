@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
-type SkipL interface {
-	Add()
-	Found()
-	Delete()
+type MemtableData interface {
+	Add(key string, element []byte, stat int, timestamp uint64) bool
+	Found(key string) (bool, *SkipListNode, []byte, string)
+	FindAllPrefix(prefix string) ([]string, [][]byte)
+	FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte)
+	GetData() [][][]byte
 }
 
 type SkipList struct {
@@ -33,7 +35,7 @@ func CreateSkipList(maxHeight, height, size int) *SkipList {
 }
 
 func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) bool {
-	pronadjen, node := s.Found(key)
+	pronadjen, node, _, _ := s.Found(key)
 	if pronadjen {
 		s.Update(key, element, stat)
 		return false
@@ -60,37 +62,37 @@ func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) b
 	return true
 }
 
-func (s *SkipList) Delete(key string) bool {
-	pronadjen, node := s.Found(key)
-	if !pronadjen || key == "" {
-		return false
-	}
-	bef := node.prev
-	for i := 0; i < len(node.next); {
-		for i >= len(bef.next) {
-			if bef.prev == nil {
-				break
-			}
-			bef = bef.prev
-		}
-		if bef.next[i] == nil {
-			bef = bef.prev
-		} else {
-			bef.next[i] = node.next[i]
-			i++
-		}
-	}
-	for i := s.height; i > 0; i-- {
-		if s.head.next[i] == nil {
-			s.height--
-		} else {
-			break
-		}
-	}
-	return true
-}
+// func (s *SkipList) Delete(key string) bool {
+// 	pronadjen, node := s.Found(key)
+// 	if !pronadjen || key == "" {
+// 		return false
+// 	}
+// 	bef := node.prev
+// 	for i := 0; i < len(node.next); {
+// 		for i >= len(bef.next) {
+// 			if bef.prev == nil {
+// 				break
+// 			}
+// 			bef = bef.prev
+// 		}
+// 		if bef.next[i] == nil {
+// 			bef = bef.prev
+// 		} else {
+// 			bef.next[i] = node.next[i]
+// 			i++
+// 		}
+// 	}
+// 	for i := s.height; i > 0; i-- {
+// 		if s.head.next[i] == nil {
+// 			s.height--
+// 		} else {
+// 			break
+// 		}
+// 	}
+// 	return true
+// }
 
-func (s *SkipList) Found(key string) (bool, *SkipListNode) {
+func (s *SkipList) Found(key string) (bool, *SkipListNode, []byte, string) {
 	pronadjen := false
 	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
 	for i := s.height - 1; i >= 0; { //stavili smo -1
@@ -109,7 +111,7 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode) {
 			i--
 		}
 	}
-	return pronadjen, &node
+	return pronadjen, &node, nil, ""
 }
 
 func (s *SkipList) Update(key string, element []byte, stat int) bool {

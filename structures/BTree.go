@@ -67,28 +67,28 @@ func (node *TreeNode) insertAt(i int, key string, val []byte, stat int, timestam
 	node.timestamps[i] = timestamp
 }
 
-func (btree *BTree) Found(key string) (bool, *SkipListNode, []byte) {
+func (btree *BTree) Found(key string) (bool, *SkipListNode, []byte, string) {
 	node := btree.root
 	for {
 		//uporedi sa node.keys
 		for i := 0; i < len(node.keys); i++ {
 			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
-				return true, nil, node.vals[i]
+				return true, nil, node.vals[i], node.keys[i]
 			} else if strings.Split(key, "-")[0] < strings.Split(node.keys[i], "-")[0] {
 				if node.isLeaf() {
-					return false, nil, nil
+					return false, nil, nil, ""
 				}
 				if node.children[i] == nil {
-					return false, nil, nil
+					return false, nil, nil, ""
 				}
 				node = node.children[i]
 				break
 			} else if strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0] && i == len(node.keys)-1 {
 				if node.isLeaf() {
-					return false, nil, nil
+					return false, nil, nil, ""
 				}
 				if node.children[i+1] == nil {
-					return false, nil, nil
+					return false, nil, nil, ""
 				}
 				node = node.children[i+1]
 				break
@@ -329,7 +329,7 @@ func inorder(node *TreeNode, dubina int) {
 func (btree *BTree) GetData() [][][]byte {
 	data := make([][][]byte, 0)
 	gd(btree.root, &data)
-
+	fmt.Println(data)
 	return data
 }
 
@@ -338,6 +338,10 @@ func gd(node *TreeNode, data *[][][]byte) {
 	for i := 0; i < n; i++ {
 		if node.children[i] != nil {
 			gd(node.children[i], data)
+		}
+
+		if node.keys[i] == "" {
+			continue
 		}
 
 		//dodaj podatak u data
@@ -349,7 +353,7 @@ func gd(node *TreeNode, data *[][][]byte) {
 		rec[2][0] = byte(tomb)
 
 		timestamp := node.timestamps[i]
-		rec[3] = make([]byte, TOMBSTONE_SIZE) //timestamp
+		rec[3] = make([]byte, TIMESTAMP_SIZE) //timestamp
 		binary.LittleEndian.PutUint64(rec[3], timestamp)
 
 		*data = append(*data, rec)

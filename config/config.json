@@ -10,7 +10,7 @@
     "MemTable": {
         "memTableMaxCap" : 5,    
         "memTableFlush" : 80,
-        "memTableType" : 1
+        "memTableType" : 2
     },
     
     "LRUCache" : {
