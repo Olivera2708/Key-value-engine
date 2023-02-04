@@ -13,7 +13,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	return_value := []byte{}
 	for key == "" {
 		fmt.Print("Unesite ključ -> ")
-		fmt.Scanln(&key)
+		fmt.Scan(&key)
 	}
 	found, value, new_key := mem.Find(key)
 	if found {

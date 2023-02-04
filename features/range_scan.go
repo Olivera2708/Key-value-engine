@@ -16,7 +16,7 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 	min_prefix := ""
 	max_prefix := ""
 
-	for true {
+	for {
 		fmt.Print("Unesite minimalni prefiks -> ")
 		fmt.Scan(&min_prefix)
 		// min_prefix = "a"
@@ -25,7 +25,7 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 		}
 	}
 
-	for true {
+	for {
 		fmt.Print("Unesite maksimalni prefiks -> ")
 		fmt.Scan(&max_prefix)
 		// max_prefix = "b"
@@ -38,12 +38,13 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 	min_prefix = strings.Split(min_prefix, "-")[0]
 
 	n := global.ResultsNumber
-	all_data := [][]byte{}
-	all_keys := []string{}
+	var all_data [][]byte
+	var all_keys []string
 	var paths []string
 	var positions1 []uint64
 	//u memtable
-	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix)
+	btree_ind := -1
+	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
 
 	//sstable
 	for lvl := 0; lvl < level; lvl++ {
@@ -84,7 +85,7 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 
 	currentPage := -1
 
-	for true {
+	for {
 		all_data = [][]byte{}
 		all_keys = []string{}
 		_, node, _, _ := mem.Data.Found(mem_key)
@@ -137,11 +138,21 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 		var bestTime uint64
 
 		for i := 0; true; i++ {
-			if node != nil && (node.Key >= min_prefix && node.Key <= max_prefix) {
-				best = node.Key
-				best_val = node.Value
-				bestTime = node.Timestamp
-				isMem = true //sta ako u mem nema prefiksa???
+			if global.MemTableDataType == 1 {
+				if node != nil && (node.Key >= min_prefix && node.Key <= max_prefix) {
+					best = node.Key
+					best_val = node.Value
+					bestTime = node.Timestamp
+					isMem = true //sta ako u mem nema prefiksa???
+				}
+			} else {
+				best = mem.Data.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
+				if best != "" {
+					best_val, bestTime = mem.Data.FindTreeNode(best)
+					isMem = true
+				} else {
+					isMem = false
+				}
 			}
 			counter := 0
 			for j := 0; j < len(files); j++ {
@@ -183,10 +194,16 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 			if (counter == len(files) && !isMem) || len(all_data) == n {
 				break
 			}
-			if isMem && node != nil {
-				node = node.Next[0]
-				if node == nil {
-					isMem = false
+			if global.MemTableDataType == 1 {
+				if isMem && node != nil {
+					node = node.Next[0]
+					if node == nil {
+						isMem = false
+					}
+				}
+			} else {
+				if isMem {
+					btree_ind++
 				}
 			}
 			for k := 0; k < len(indices); k++ {

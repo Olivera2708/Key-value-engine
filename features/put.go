@@ -9,9 +9,9 @@ import (
 func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int, percentage int, summaryBlockingFactor int, HLLp int, CMSp float64, CMSd float64, BFn int, BFp float64) {
 
 	key := ""
-	for true {
+	for {
 		fmt.Print("Unesite ključ -> ")
-		fmt.Scanln(&key)
+		fmt.Scan(&key)
 		if !strings.Contains(key, "-") && strings.ReplaceAll(key, " ", "") != "" {
 			break
 		} else {
@@ -30,7 +30,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	fmt.Println("| 5. SimHash                                  |")
 	fmt.Println("-----------------------------------------------")
 	num := 0
-	for true {
+	for {
 		fmt.Print("Unesite jedan od ponuđenih brojeva -> ")
 		fmt.Scan(&num)
 		if num > 0 && num < 6 {

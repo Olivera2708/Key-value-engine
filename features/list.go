@@ -15,7 +15,7 @@ import (
 func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int) {
 	prefix := ""
 
-	for true {
+	for {
 		fmt.Print("Unesite prefiks -> ")
 		// prefix = "a"
 		fmt.Scan(&prefix)
@@ -24,13 +24,14 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 		}
 	}
 	n := global.ResultsNumber
-	all_data := [][]byte{}
-	all_keys := []string{}
+	var all_data [][]byte
+	var all_keys []string
 	var paths []string
 	var positions1 []uint64
 
 	//u memtable
-	mem_key := mem.FindAllPrefix(prefix)
+	btree_ind := -1
+	mem_key := mem.FindAllPrefix(prefix, btree_ind)
 	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
@@ -61,7 +62,7 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 	}
 	currentPage := -1
 
-	for true {
+	for {
 		all_data = [][]byte{}
 		all_keys = []string{}
 		_, node, _, _ := mem.Data.Found(mem_key)
@@ -114,11 +115,21 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 		var bestTime uint64
 
 		for i := 0; true; i++ {
-			if node != nil && strings.HasPrefix(node.Key, prefix) {
-				best = node.Key
-				best_val = node.Value
-				bestTime = node.Timestamp
-				isMem = true //sta ako u mem nema prefiksa???
+			if global.MemTableDataType == 1 {
+				if node != nil && strings.HasPrefix(node.Key, prefix) {
+					best = node.Key
+					best_val = node.Value
+					bestTime = node.Timestamp
+					isMem = true //sta ako u mem nema prefiksa???
+				}
+			} else {
+				best = mem.Data.FindAllPrefix(prefix, btree_ind)
+				if best != "" {
+					best_val, bestTime = mem.Data.FindTreeNode(best)
+					isMem = true
+				} else {
+					isMem = false
+				}
 			}
 			counter := 0
 			for j := 0; j < len(files); j++ {
@@ -160,10 +171,16 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 			if (counter == len(files) && !isMem) || len(all_data) == n {
 				break
 			}
-			if isMem && node != nil {
-				node = node.Next[0]
-				if node == nil {
-					isMem = false
+			if global.MemTableDataType == 1 {
+				if isMem && node != nil {
+					node = node.Next[0]
+					if node == nil {
+						isMem = false
+					}
+				}
+			} else {
+				if isMem {
+					btree_ind++
 				}
 			}
 			for k := 0; k < len(indices); k++ {
@@ -193,42 +210,7 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 	}
 }
 
-func writerPrefix(all_keys []string, all_data [][]byte) {
-	pageNumber := ""
-	currentPage := -1
-	for true {
-		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
-		// fmt.Scan(&pageNumber)
-		pageNumber = "2"
-		num, err := strconv.Atoi(pageNumber)
-		if err != nil {
-			if pageNumber == "x" {
-				break
-			}
-			if currentPage != -1 {
-				if pageNumber == "p" && currentPage > 1 {
-					currentPage--
-					writeAllPrefixData(all_keys, all_data, currentPage)
-				} else if pageNumber == "s" && currentPage*global.ResultsNumber < len(all_data) {
-					currentPage++
-					writeAllPrefixData(all_keys, all_data, currentPage)
-				} else {
-					fmt.Println("Trazena strana ne postoji")
-				}
-			} else {
-				fmt.Println("Potrebno je uneti broj")
-			}
-		} else if num < 1 || (num-1)*global.ResultsNumber >= len(all_data) {
-			fmt.Println("Neispravan broj strana")
-		} else {
-			currentPage = num
-			writeAllPrefixData(all_keys, all_data, currentPage)
-		}
-	}
-}
-
 func writeAllPrefixData(all_keys []string, all_data [][]byte, pageNumber int) {
-	// start := (pageNumber - 1) * global.ResultsNumber
 
 	for i := 0; i < len(all_data); i++ {
 		if i >= len(all_data) {
