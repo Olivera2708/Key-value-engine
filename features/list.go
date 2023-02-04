@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int) {
+func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) {
 	prefix := ""
 
 	for {
@@ -35,7 +35,7 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
-	for lvl := 0; lvl < level; lvl++ {
+	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
 		for i := 0; true; i++ {
 			if sstableType == 2 {
 				_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)

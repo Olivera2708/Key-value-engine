@@ -45,8 +45,9 @@ func main() {
 	cacheSize := 14.0
 	SSTableType := 2.0 // single -> 1, multiple -> 2
 	summaryBlockingFactor := 20.0
-	LSMTreeLevel := 4.0
-	LSMAlgorithm := 1.0 //size -> 1, lleveled -> 2
+	global.LSMTreeLevel = 4
+	global.LSMAlgorithm = 1 //size -> 1, lleveled -> 2
+	global.LSMMinimum = 3
 	TokenTime := 10.0
 	TokenNumber := 5.0
 	global.ResultsNumber = 5
@@ -72,8 +73,9 @@ func main() {
 		cacheSize = payload["LRUCache"]["cacheSize"]
 		SSTableType = payload["SSTable"]["SSTableType"]
 		summaryBlockingFactor = payload["SSTable"]["summaryBlockingFactor"]
-		LSMTreeLevel = payload["LSMTree"]["LSMTreeLevel"]
-		LSMAlgorithm = payload["LSMTree"]["LSMAlgorithm"]
+		global.LSMTreeLevel = int(payload["LSMTree"]["LSMTreeLevel"])
+		global.LSMAlgorithm = int(payload["LSMTree"]["LSMAlgorithm"])
+		global.LSMMinimum = int(payload["LSMTree"]["LSMMinimum"])
 		TokenTime = payload["TokenBucket"]["TokenTime"]
 		TokenNumber = payload["TokenBucket"]["TokenNumber"]
 		global.ResultsNumber = int(payload["Pagination"]["ResultsNumber"])
@@ -128,9 +130,10 @@ func main() {
 		fmt.Println("|                       Za izlaz ukucajte 'x' |")
 		fmt.Println("-----------------------------------------------")
 		fmt.Print("\nIzaberite opciju -> ")
+		//////////////////////////////////////////////////////////////////
 		fmt.Scan(&a)
-		// a = "4"
-
+		// a = "6"
+		//////////////////////////////////////////////////////////////////
 		if tocken_bucket(int(TokenTime), int(TokenNumber), TokenList) {
 			switch a {
 			case "x":
@@ -138,22 +141,22 @@ func main() {
 			case "1":
 				features.PUT(wal, mem, cache, &generation, *bloom, int(SSTableType), int(memTableFlush), int(summaryBlockingFactor), int(HLLp), CMSp, CMSd, int(BFn), BFp)
 			case "2":
-				features.GET(mem, cache, *bloom, int(SSTableType), int(LSMTreeLevel), int(summaryBlockingFactor), int(generation), wal, int(memTableFlush))
+				features.GET(mem, cache, *bloom, int(SSTableType), int(summaryBlockingFactor), int(generation), wal, int(memTableFlush))
 			case "3":
 				features.DELETE(wal, mem, cache)
 				fmt.Println("Uspešno obrisan")
 			case "4":
-				features.LIST(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor))
+				features.LIST(mem, int(SSTableType), int(summaryBlockingFactor))
 			case "5":
-				features.RANGE_SCAN(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor))
+				features.RANGE_SCAN(mem, int(SSTableType), int(summaryBlockingFactor))
 			case "6":
-				if generation > 1 {
-					generation = features.LSM(int(SSTableType), int(LSMAlgorithm), int(LSMTreeLevel), int(summaryBlockingFactor))
-				}
+				// if generation > 1 {
+				generation = features.LSM(int(SSTableType), int(summaryBlockingFactor))
+				// }
 
 			case "test":
-				fmt.Println(LSMAlgorithm)
-				fmt.Println(LSMTreeLevel)
+				//fmt.Println(LSMAlgorithm)
+				//fmt.Println(LSMTreeLevel)
 				fmt.Println(SSTableType)
 			default:
 				fmt.Println("Pogrešan unos")

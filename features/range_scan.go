@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int) {
+func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) {
 	min_prefix := ""
 	max_prefix := ""
 
@@ -47,7 +47,7 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
 
 	//sstable
-	for lvl := 0; lvl < level; lvl++ {
+	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
 		for i := 0; true; i++ {
 			if sstableType == 2 {
 				_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)

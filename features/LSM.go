@@ -1,32 +1,34 @@
 package features
 
 import (
+	"Projekat/global"
 	"Projekat/structures"
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 )
 
-func LSM(sstype int, algorithm int, level int, summaryBlockingFactor int) int {
-	if algorithm == 1 {
+func LSM(sstype int, summaryBlockingFactor int) int {
+	if global.LSMAlgorithm == 1 {
 		if sstype == 1 {
 
 			//fmt.Println("sts")
-			SizeTieredSingle(level, summaryBlockingFactor)
+			SizeTieredSingle(summaryBlockingFactor)
 		} else {
-			//fmt.Println("stm")
+			fmt.Println("stm")
 
-			SizeTieredMulti(level, summaryBlockingFactor)
+			SizeTieredMulti(0, summaryBlockingFactor)
 		}
 	} else {
 		if sstype == 1 {
 			//fmt.Println("ls")
-			LeveledSingle(level, summaryBlockingFactor)
+			//LeveledSingle(summaryBlockingFactor)
 		} else {
 			//fmt.Println("lm")
-			LeveledMulti(level, summaryBlockingFactor)
+			//LeveledMulti(summaryBlockingFactor)
 		}
 	}
 	return 0
@@ -45,7 +47,7 @@ func LSM(sstype int, algorithm int, level int, summaryBlockingFactor int) int {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func SizeTieredSingle(level int, summaryBlockingFactor int) {
+func SizeTieredSingle(summaryBlockingFactor int) {
 
 	files := make([]os.File, 0)
 	mapa := make(map[int]bool)
@@ -53,7 +55,7 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 
 	for i := 0; true; i++ {
 
-		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
+		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
 
 		if os.IsNotExist(err) {
 			break
@@ -76,7 +78,7 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 
 	newGen := 0
 	for i := 0; true; i++ {
-		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
 		if os.IsNotExist(err) {
 			newGen = i
 			break
@@ -93,7 +95,7 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 	recMin := make(map[string][]byte)
 	newRec := make(map[string][]byte)
 	newMin := 0
-	newFile, _ := os.Create("data/singlesstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen) + "-data.db")
+	newFile, _ := os.Create("data/singlesstables/usertable-" + fmt.Sprint(global.LSMTreeLevel+1) + "-" + fmt.Sprint(newGen) + "-data.db")
 	initialZeros := make([]byte, 32)
 	newFile.Write(initialZeros)
 	for true {
@@ -283,9 +285,9 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 	newFile.Close()
 
 	merkle := structures.CreateMerkleTree(values)
-	structures.WriteMerkleInFile(merkle, "data/singlesstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen))
+	structures.WriteMerkleInFile(merkle, "data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel+1)+"-"+fmt.Sprint(newGen))
 
-	SizeTieredSingle(level+1, summaryBlockingFactor)
+	//SizeTieredSingle(summaryBlockingFactor)
 
 }
 
@@ -305,157 +307,197 @@ func SizeTieredSingle(level int, summaryBlockingFactor int) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func SizeTieredMulti(level int, summaryBlockingFactor int) {
+	fmt.Println("Na pocetku jeste")
 
-	files := make([]os.File, 0)
-	mapa := make(map[int]bool)
-
-	for i := 0; true; i++ {
-		file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
-
-		if os.IsNotExist(err) {
-			break
-		}
-		//test
-		fmt.Println("data/sstables/usertable-" + fmt.Sprint(level) + "-" + fmt.Sprint(i) + "-data.db")
-		files = append(files, *file)
-		mapa[i] = true
-	}
-
-	if len(files) < 2 {
+	if level > global.LSMTreeLevel {
 		return
 	}
 
-	newGen := 0
-	for i := 0; true; i++ {
-		file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+	totalFiles := 0
+
+	for j := 0; true; j++ {
+		file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+
 		if os.IsNotExist(err) {
-			newGen = i
 			break
 		}
+		totalFiles += 1
 		file.Close()
 	}
 
-	keys := make([]string, 0)
-	values := make([][]byte, 0)
-	positions := make([]int, 0)
-	currentPos := 0
+	if totalFiles < global.LSMMinimum {
+		return
+	}
 
-	recMin := make(map[string][]byte)
-	newRec := make(map[string][]byte)
-	empty := true
-	newMin := 0
-	newFile, _ := os.Create("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen) + "-data.db")
-	for true {
-		newMin = -1
+	for j := 0; j < int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum))); j++ {
 
-		minimums := make([]int, 0)
-		for i := 0; i < len(files); i++ {
-			if mapa[i] {
-				recMin, empty = structures.ReadNextRecord(&files[i])
-				if !empty {
-					newMin = i
-					minimums = append(minimums, newMin)
-					minimums = append(minimums, len(recMin["key"]))
-					minimums = append(minimums, len(recMin["value"]))
-					break
-				} else {
-					files[i].Close()
-					mapa[i] = false
+		files := make([]os.File, 0)
+		mapa := make(map[int]bool)
+
+		for i := j * global.LSMMinimum; i < (j+1)*global.LSMMinimum; i++ {
+
+			file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
+
+			if os.IsNotExist(err) {
+				break
+			}
+			//test
+			// fmt.Println("data/sstables/usertable-" + fmt.Sprint(level) + "-" + fmt.Sprint(i) + "-data.db")
+			files = append(files, *file)
+			mapa[i-j*global.LSMMinimum] = true
+		}
+
+		if len(files) < global.LSMMinimum {
+			return
+		}
+
+		newGen := 0
+		for i := 0; true; i++ {
+			file, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+			if os.IsNotExist(err) {
+				newGen = i
+				break
+			}
+			file.Close()
+		}
+
+		keys := make([]string, 0)
+		values := make([][]byte, 0)
+		positions := make([]int, 0)
+		currentPos := 0
+
+		recMin := make(map[string][]byte)
+		newRec := make(map[string][]byte)
+		empty := true
+		newMin := 0
+		newFile, _ := os.Create("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen) + "-data.db")
+		for true {
+			newMin = -1
+
+			minimums := make([]int, 0)
+			for i := 0; i < len(files); i++ {
+				if mapa[i] {
+					recMin, empty = structures.ReadNextRecord(&files[i])
+					if !empty {
+						newMin = i
+						minimums = append(minimums, newMin)
+						minimums = append(minimums, len(recMin["key"]))
+						minimums = append(minimums, len(recMin["value"]))
+						break
+					} else {
+						files[i].Close()
+						mapa[i] = false
+					}
 				}
 			}
-		}
 
-		if newMin == -1 {
-			break
-		}
+			if newMin == -1 {
+				break
+			}
 
-		// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
+			// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
 
-		for i := newMin + 1; i < len(files); i++ {
-			if mapa[i] {
-				newRec, empty = structures.ReadNextRecord(&files[i])
+			for i := newMin + 1; i < len(files); i++ {
+				if mapa[i] {
+					newRec, empty = structures.ReadNextRecord(&files[i])
 
-				if empty {
-					files[i].Close()
-					mapa[i] = false
-					continue
-				}
-
-				if strings.Split(string(newRec["key"]), "-")[0] < strings.Split(string(recMin["key"]), "-")[0] {
-					m := 0
-					for m < len(minimums) {
-						files[minimums[m]].Seek(-29-int64(minimums[m+1])-int64(minimums[m+2]), 1)
-						m += 3
+					if empty {
+						files[i].Close()
+						mapa[i] = false
+						continue
 					}
 
-					newMin = i
+					if strings.Split(string(newRec["key"]), "-")[0] < strings.Split(string(recMin["key"]), "-")[0] {
+						m := 0
+						for m < len(minimums) {
+							files[minimums[m]].Seek(-29-int64(minimums[m+1])-int64(minimums[m+2]), 1)
+							m += 3
+						}
 
-					minimums := make([]int, 0)
-					minimums = append(minimums, newMin)
-					minimums = append(minimums, len(newRec["key"]))
-					minimums = append(minimums, len(newRec["value"]))
+						newMin = i
 
-					recMin = newRec
+						minimums := make([]int, 0)
+						minimums = append(minimums, newMin)
+						minimums = append(minimums, len(newRec["key"]))
+						minimums = append(minimums, len(newRec["value"]))
 
-				} else if strings.Split(string(newRec["key"]), "-")[0] > strings.Split(string(recMin["key"]), "-")[0] {
-					files[i].Seek(-29-int64(len(newRec["key"]))-int64(len(newRec["value"])), 1)
-
-				} else {
-
-					minimums = append(minimums, i)
-					minimums = append(minimums, len(newRec["key"]))
-					minimums = append(minimums, len(newRec["value"]))
-					tNew := binary.LittleEndian.Uint64(newRec["timestamp"])
-					tMin := binary.LittleEndian.Uint64(recMin["timestamp"])
-					if tNew > tMin {
 						recMin = newRec
+
+					} else if strings.Split(string(newRec["key"]), "-")[0] > strings.Split(string(recMin["key"]), "-")[0] {
+						files[i].Seek(-29-int64(len(newRec["key"]))-int64(len(newRec["value"])), 1)
+
+					} else {
+
+						minimums = append(minimums, i)
+						minimums = append(minimums, len(newRec["key"]))
+						minimums = append(minimums, len(newRec["value"]))
+						tNew := binary.LittleEndian.Uint64(newRec["timestamp"])
+						tMin := binary.LittleEndian.Uint64(recMin["timestamp"])
+						if tNew > tMin {
+							recMin = newRec
+						}
 					}
+
 				}
-
 			}
+
+			if recMin["tombstone"][0] == 0 {
+				rec := append(recMin["crc"], recMin["timestamp"]...)
+				rec = append(rec, recMin["tombstone"]...)
+				rec = append(rec, recMin["key_size"]...)
+				rec = append(rec, recMin["val_size"]...)
+				rec = append(rec, recMin["key"]...)
+				rec = append(rec, recMin["value"]...)
+				newFile.Write(rec)
+				keys = append(keys, string(recMin["key"]))
+				values = append(values, recMin["value"])
+				positions = append(positions, currentPos)
+				currentPos += 29 + len(recMin["key"]) + len(recMin["value"])
+			}
+
 		}
 
-		if recMin["tombstone"][0] == 0 {
-			rec := append(recMin["crc"], recMin["timestamp"]...)
-			rec = append(rec, recMin["tombstone"]...)
-			rec = append(rec, recMin["key_size"]...)
-			rec = append(rec, recMin["val_size"]...)
-			rec = append(rec, recMin["key"]...)
-			rec = append(rec, recMin["value"]...)
-			newFile.Write(rec)
-			keys = append(keys, string(recMin["key"]))
-			values = append(values, recMin["value"])
-			positions = append(positions, currentPos)
-			currentPos += 29 + len(recMin["key"]) + len(recMin["value"])
+		for f := 0; f < len(files); f++ {
+			path := files[f].Name()
+			path = path[:len(path)-8]
+			os.Remove(path + "-data.db")
+			os.Remove(path + "-index.db")
+			os.Remove(path + "-summary.db")
+			os.Remove(path + "-filter.db")
+			os.Remove(path + "-TOC.txt")
+			os.Remove(path + "-Metadata.txt")
+
 		}
 
+		newFile.Close()
+
+		structures.CreateIndex(keys, positions, "data/sstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen), summaryBlockingFactor)
+
+		bf := structures.CreateBloomFilter(uint(len(keys)), 2)
+		for i := 0; i < len(keys); i++ {
+			bf.Add(keys[i])
+		}
+		bf.Write("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen))
+		structures.CreateTOC("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen))
+
+		merkle := structures.CreateMerkleTree(values)
+		structures.WriteMerkleInFile(merkle, "data/sstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen))
 	}
 
-	for f := 0; f < len(files); f++ {
-		path := files[f].Name()
-		path = path[:len(path)-8]
-		os.Remove(path + "-data.db")
-		os.Remove(path + "-index.db")
-		os.Remove(path + "-summary.db")
-		os.Remove(path + "-filter.db")
-		os.Remove(path + "-TOC.txt")
-		os.Remove(path + "-Metadata.txt")
-
+	for j := int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum))) * global.LSMMinimum; j < totalFiles; j++ {
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-data.db",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-data.db")
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-index.db",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-index.db")
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-summary.db",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-summary.db")
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-filter.db",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-filter.db")
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-Toc.txt",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-TOC.txt")
+		os.Rename("data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-Metadata.txt",
+			"data/sstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-Metadata.txt")
 	}
-
-	newFile.Close()
-
-	structures.CreateIndex(keys, positions, "data/sstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen), summaryBlockingFactor)
-
-	bf := structures.CreateBloomFilter(uint(len(keys)), 2)
-	for i := 0; i < len(keys); i++ {
-		bf.Add(keys[i])
-	}
-	bf.Write("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen))
-	structures.CreateTOC("data/sstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen))
-
-	merkle := structures.CreateMerkleTree(values)
-	structures.WriteMerkleInFile(merkle, "data/singlesstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen))
 
 	SizeTieredMulti(level+1, summaryBlockingFactor)
 
@@ -463,13 +505,15 @@ func SizeTieredMulti(level int, summaryBlockingFactor int) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func LeveledSingle(level int, summaryBlockingFactor int) {
+func LeveledSingleFlush(summaryBlockingFactor int) {
 
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func LeveledMulti(level int, summaryBlockingFactor int) {}
+func LeveledMulti(memtable *structures.Memtable, summaryBlockingFactor int) {
+
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1,6 +1,7 @@
 package features
 
 import (
+	"Projekat/global"
 	"Projekat/structures"
 	"bufio"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"strings"
 )
 
-func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, level int, summaryBlockingFactor int, generation int, wal *structures.WAL, precentage int) {
+func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures.BloomF, sstableType int, summaryBlockingFactor int, generation int, wal *structures.WAL, precentage int) {
 	key := ""
 	return_value := []byte{}
 	for key == "" {
@@ -43,7 +44,7 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	}
 	fmt.Println("Nema bloom")
 
-	for lvl := 0; lvl < level; lvl++ {
+	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
 		for i := 0; true; i++ {
 			if sstableType == 2 {
 				_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)

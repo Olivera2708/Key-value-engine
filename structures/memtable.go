@@ -1,6 +1,10 @@
 package structures
 
-import "Projekat/global"
+import (
+	"Projekat/global"
+	"fmt"
+	"os"
+)
 
 type Memtable struct {
 	Data         MemtableData
@@ -64,12 +68,36 @@ func (Memtable *Memtable) Find(key string) (found bool, value []byte, all_key st
 func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int, summaryBlockingFactor int) int {
 	if float64(memtable.capacity)/float64(memtable.max_capacity)*100 >= float64(percentage) { //ovde treba videti odakle se uzima granica popunjenosti
 		data := memtable.Data.GetData()
-		if sstableType == 2 {
-			CreateSSTable(data, *generation, summaryBlockingFactor)
-		} else {
-			CreateSingleSSTable(data, *generation, summaryBlockingFactor)
+
+		//dodati da broji za generaciju
+		generation := 0
+		for j := 0; true; j++ {
+			file, err := os.OpenFile("data/sstables/usertable-0-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+
+			if os.IsNotExist(err) {
+				break
+			}
+			generation += 1
+			file.Close()
 		}
-		*generation++
+
+		if sstableType == 2 {
+			if global.LSMAlgorithm == 1 {
+				CreateSSTable(data, generation, summaryBlockingFactor)
+			} else {
+				//features.LSM(sstableType, summaryBlockingFactor)
+
+			}
+
+		} else {
+			if global.LSMAlgorithm == 1 {
+				CreateSingleSSTable(data, generation, summaryBlockingFactor)
+			} else {
+				//features.LSM(sstableType, summaryBlockingFactor)
+			}
+
+		}
+		generation++
 		memtable.capacity = 0
 		if global.MemTableDataType == 1 {
 			memtable.Data = CreateSkipList(global.SkipListMaxHeight, 1, 0) //obrisali -1 za maxh

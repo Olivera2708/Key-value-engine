@@ -24,7 +24,8 @@
 
     "LSMTree" : {
         "LSMTreeLevel" : 4,
-        "LSMAlgorithm" : 1
+        "LSMAlgorithm" : 1,
+        "LSMMinimum" : 3
     },
 
     "TokenBucket" : {
