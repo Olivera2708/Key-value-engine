@@ -507,10 +507,7 @@ func FindPrefixIndexRangeMultiple(path string, min_prefix string, max_prefix str
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
 			return path, pos
-			// keys, values := FindPrefixSSTableRangeMultiple(path, min_prefix, max_prefix, pos)
-			// return_data = append(return_data, values...)
-			// all_keys = append(all_keys, keys...)
-			// break
+
 		} else if string(key1) > max_prefix {
 			break
 		}

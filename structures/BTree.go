@@ -329,7 +329,7 @@ func inorder(node *TreeNode, dubina int) {
 func (btree *BTree) GetData() [][][]byte {
 	data := make([][][]byte, 0)
 	gd(btree.root, &data)
-	fmt.Println(data)
+	//fmt.Println(data)
 	return data
 }
 
@@ -364,38 +364,61 @@ func gd(node *TreeNode, data *[][][]byte) {
 	}
 }
 
-func (btree *BTree) FindAllPrefix(prefix string) string {
-	// res := make([]string, 0)
-	// res_val := make([][]byte, 0)
+func (btree *BTree) FindAllPrefix(prefix string, j int) string {
 
 	data := btree.GetData()
 
-	for i := 0; i < len(data); i++ {
+	for i := j + 1; i < len(data); i++ {
 		k := string(data[i][0])
 
 		if data[i][2][0] == 0 && strings.HasPrefix(k, prefix) {
 			return k
-			// res = append(res, k)
-			// res_val = append(res_val, data[i][1])
 		}
 	}
-	// return res, res_val
 	return ""
 }
 
-func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string) string {
-	// res := make([]string, 0)
-	// res_val := make([][]byte, 0)
+func (btree *BTree) FindTreeNode(key string) ([]byte, uint64) {
+	node := btree.root
+	for {
+		//uporedi sa node.keys
+		for i := 0; i < len(node.keys); i++ {
+			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
+				return node.vals[i], node.timestamps[i]
+			} else if strings.Split(key, "-")[0] < strings.Split(node.keys[i], "-")[0] {
+				if node.isLeaf() {
+					return nil, 0
+				}
+				if node.children[i] == nil {
+					return nil, 0
+				}
+				node = node.children[i]
+				break
+			} else if strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0] && i == len(node.keys)-1 {
+				if node.isLeaf() {
+					return nil, 0
+				}
+				if node.children[i+1] == nil {
+					return nil, 0
+				}
+				node = node.children[i+1]
+				break
+			}
+		}
+	}
+}
 
-	// data := btree.GetData()
+func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string, j int) string {
 
-	// for i := 0; i < len(data); i++ {
-	// 	k := string(data[i][0])
+	data := btree.GetData()
 
-	// 	if data[i][2][0] == 0 && min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
-	// 		res = append(res, k)
-	// 		res_val = append(res_val, data[i][1])
-	// 	}
-	// }
+	for i := j + 1; i < len(data); i++ {
+		k := string(data[i][0])
+
+		if data[i][2][0] == 0 && min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
+			return k
+
+		}
+	}
 	return ""
 }

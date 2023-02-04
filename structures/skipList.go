@@ -9,9 +9,10 @@ import (
 type MemtableData interface {
 	Add(key string, element []byte, stat int, timestamp uint64) bool
 	Found(key string) (bool, *SkipListNode, []byte, string)
-	FindAllPrefix(prefix string) string
-	FindAllPrefixRange(min_prefix string, max_prefix string) string
+	FindAllPrefix(prefix string, j int) string
+	FindAllPrefixRange(min_prefix string, max_prefix string, j int) string
 	GetData() [][][]byte
+	FindTreeNode(key string) ([]byte, uint64)
 }
 
 type SkipList struct {
@@ -135,7 +136,7 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 	return false
 }
 
-func (s *SkipList) FindAllPrefix(prefix string) string {
+func (s *SkipList) FindAllPrefix(prefix string, j int) string {
 	node := s.head.Next[0]
 	// return_data := [][]byte{}
 	// all_keys := []string{}
@@ -151,7 +152,7 @@ func (s *SkipList) FindAllPrefix(prefix string) string {
 	return ""
 }
 
-func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) string {
+func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string, j int) string {
 	// return_data := [][]byte{}
 	// all_keys := []string{}
 	node := s.head.Next[0]
@@ -203,4 +204,8 @@ func (s *SkipList) GetData() [][][]byte { // key, value, tombstone, timestamp
 		data = append(data, newRec)
 	}
 	return data
+}
+
+func (s *SkipList) FindTreeNode(key string) ([]byte, uint64) {
+	return nil, 0
 }
