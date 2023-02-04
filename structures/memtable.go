@@ -41,7 +41,7 @@ func (Memtable *Memtable) FindAllPrefix(prefix string) string {
 	return Memtable.Data.FindAllPrefix(prefix)
 }
 
-func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
+func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) string {
 	return Memtable.Data.FindAllPrefixRange(min_prefix, max_prefix)
 }
 

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"encoding/gob"
-	"fmt"
 	"hash/crc32"
 	"log"
 	"math"
@@ -184,7 +183,6 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 }
 
 func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byte, string) {
-	fmt.Println("Summary")
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	defer file.Close()
 	lengthBytes := make([]byte, 8, 8)
@@ -229,13 +227,9 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
 
-	fmt.Println(string(startIndex))
-	fmt.Println(string(endIndex))
 	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
-
-			//fmt.Print(int(math.Ceil(float64(length) / float64(SUMMARY_BLOCKING_FACTOR))))
 
 			keyLen := make([]byte, 8)
 			file.Read(keyLen)
@@ -258,7 +252,6 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 
 				return found, value, new_key
 			}
-			// file.Seek(8, 1)
 			file.Read(position)
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
@@ -273,8 +266,6 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 }
 
 func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, []byte, string) {
-	fmt.Println("Indeks")
-	file.Seek(int64(posInd), 0) // ups
 	file.Seek(int64(position), 0)
 	position1 := make([]byte, 8)
 	for true {
@@ -298,7 +289,6 @@ func ReadSingleIndex(file *os.File, key string, position, posInd uint64) (bool, 
 }
 
 func ReadSingleSSTable(file *os.File, key string, pos uint64) []byte {
-	fmt.Println("Data")
 	file.Seek(int64(pos)+13, 0)
 	keyLen := make([]byte, 8, 8)
 	file.Read(keyLen)
@@ -328,7 +318,6 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 	file.Read(posSumBytes)
 	file.Read(posBFBytes)
 	length := binary.LittleEndian.Uint64(lengthBytes)
-	// posInd := binary.LittleEndian.Uint64(posIndBytes)
 	posSum := binary.LittleEndian.Uint64(posSumBytes)
 	posBF := binary.LittleEndian.Uint64(posBFBytes)
 	file.Seek(int64(posBF), 0)
@@ -361,13 +350,9 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 	endIndex := make([]byte, endL)
 	file.Read(endIndex)
 
-	fmt.Println("start indeks: " + string(startIndex))
-	fmt.Println("end indeks" + string(endIndex))
 	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
 		position := make([]byte, 8)
 		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
-
-			//fmt.Print(int(math.Ceil(float64(length) / float64(SUMMARY_BLOCKING_FACTOR))))
 
 			keyLen := make([]byte, 8)
 			file.Read(keyLen)
@@ -390,7 +375,6 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 
 				return path1, pos1
 			}
-			// file.Seek(8, 1)
 			file.Read(position)
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
@@ -405,8 +389,6 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 }
 
 func FindAllPrefixIndexSingle(path string, prefix string, position uint64, file *os.File) (string, uint64) {
-	fmt.Println("Indeks")
-	// file.Seek(int64(posInd), 0) // ups
 	file.Seek(int64(position), 0)
 	position1 := make([]byte, 8)
 	for true {
@@ -418,7 +400,6 @@ func FindAllPrefixIndexSingle(path string, prefix string, position uint64, file 
 		if strings.HasPrefix(strings.Split(string(key1), "-")[0], strings.Split(prefix, "-")[0]) {
 			file.Read(position1)
 			pos := binary.LittleEndian.Uint64(position1)
-			// value := FindPrefixSSTableSingle(file, string(key1), pos)
 			return path, pos
 		} else if strings.Split(prefix, "-")[0] < strings.Split(string(key1), "-")[0] {
 			return "", 0
@@ -462,8 +443,107 @@ func FindPrefixSSTableSingle(key string, position uint64, file *os.File) (string
 	return "", []byte(""), []byte("")
 }
 
-func FindAllPrefixRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) []string {
-	return_data := []string{}
+func FindAllPrefixRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) (string, uint64) {
+	return FindPrefixSummaryRangeSingle(path, min_prefix, max_prefix, summaryBlockingFactor)
+}
 
-	return return_data
+func FindPrefixSummaryRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) (string, uint64) {
+	file, _ := os.OpenFile(path+"-data.db", os.O_RDONLY, 0666)
+	defer file.Close()
+	lengthBytes := make([]byte, 8, 8)
+	posIndBytes := make([]byte, 8, 8)
+	posSumBytes := make([]byte, 8, 8)
+	posBFBytes := make([]byte, 8, 8)
+	file.Read(lengthBytes)
+	file.Read(posIndBytes)
+	file.Read(posSumBytes)
+	file.Read(posBFBytes)
+	posSum := binary.LittleEndian.Uint64(posSumBytes)
+	file.Seek(int64(posSum), 0)
+
+	startLen := make([]byte, 8)
+	endLen := make([]byte, 8)
+
+	file.Read(startLen)
+	startL := binary.LittleEndian.Uint64(startLen)
+	startIndex := make([]byte, startL)
+	file.Read(startIndex)
+	file.Read(endLen)
+	endL := binary.LittleEndian.Uint64(endLen)
+	endIndex := make([]byte, endL)
+	file.Read(endIndex)
+
+	if (min_prefix <= strings.Split(string(startIndex), "-")[0] && strings.Split(string(startIndex), "-")[0] <= max_prefix) || (min_prefix <= strings.Split(string(endIndex), "-")[0] && strings.Split(string(endIndex), "-")[0] <= max_prefix) || (min_prefix <= strings.Split(string(endIndex), "-")[0] && strings.Split(string(startIndex), "-")[0] <= max_prefix) {
+		position := make([]byte, 8)
+		keyLen := make([]byte, 8)
+		file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		file.Read(position)
+		pos := binary.LittleEndian.Uint64(position)
+		path1, pos1 := FindAllPrefixIndexRangeSingle(path, min_prefix, max_prefix, pos, file)
+		return path1, pos1
+	}
+	return "", 0
+
+}
+
+func FindAllPrefixIndexRangeSingle(path string, min_prefix string, max_prefix string, position uint64, file *os.File) (string, uint64) {
+	file.Seek(int64(position), 0)
+	position1 := make([]byte, 8)
+	for true {
+		keyLen := make([]byte, 8)
+		file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		if strings.Split(string(key1), "-")[0] <= max_prefix && strings.Split(string(key1), "-")[0] >= min_prefix {
+			file.Read(position1)
+			pos := binary.LittleEndian.Uint64(position1)
+			// value := FindPrefixSSTableSingle(file, string(key1), pos)
+			return path, pos
+		} else if string(key1) > max_prefix {
+			break
+		}
+		file.Seek(8, 1)
+	}
+	return "", 0
+}
+
+func FindPrefixSSTableRangeSingle(min_prefix string, max_prefix string, position uint64, file *os.File) (string, []byte, []byte) {
+	file.Seek(8, 0)
+	endBytes := make([]byte, 8)
+	file.Read(endBytes)
+	end := binary.LittleEndian.Uint64(endBytes)
+	if position >= end {
+		return "", []byte(""), []byte("")
+	}
+
+	file.Seek(int64(position), 0)
+	for {
+		file.Seek(4, 1)
+		timestamp := make([]byte, TIMESTAMP_SIZE)
+		file.Read(timestamp)
+		file.Seek(1, 1)
+		keyLen := make([]byte, 8, 8)
+		_, err := file.Read(keyLen)
+		if err != nil {
+			break
+		}
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		valLen := make([]byte, 8, 8)
+		file.Read(valLen)
+		valLenNum := binary.LittleEndian.Uint64(valLen)
+		key1 := make([]byte, keyLenNum, keyLenNum)
+		file.Read(key1)
+		value := make([]byte, valLenNum, valLenNum)
+		file.Read(value)
+		if strings.Split(string(key1), "-")[0] <= max_prefix && strings.Split(string(key1), "-")[0] >= min_prefix {
+			return string(key1), value, timestamp
+		} else if strings.Split(string(key1), "-")[0] > max_prefix {
+			break
+		}
+	}
+	return "", []byte(""), []byte("")
 }

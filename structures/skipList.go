@@ -10,7 +10,7 @@ type MemtableData interface {
 	Add(key string, element []byte, stat int, timestamp uint64) bool
 	Found(key string) (bool, *SkipListNode, []byte, string)
 	FindAllPrefix(prefix string) string
-	FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte)
+	FindAllPrefixRange(min_prefix string, max_prefix string) string
 	GetData() [][][]byte
 }
 
@@ -151,20 +151,20 @@ func (s *SkipList) FindAllPrefix(prefix string) string {
 	return ""
 }
 
-func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
-	return_data := [][]byte{}
-	all_keys := []string{}
+func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) string {
+	// return_data := [][]byte{}
+	// all_keys := []string{}
 	node := s.head.Next[0]
 
 	for node != nil {
 		if node.Status == 0 && min_prefix <= strings.Split(node.Key, "-")[0] && max_prefix >= strings.Split(node.Key, "-")[0] {
-			// return node.key
-			all_keys = append(all_keys, node.Key)
-			return_data = append(return_data, node.Value)
+			return node.Key
+			// all_keys = append(all_keys, node.Key)
+			// return_data = append(return_data, node.Value)
 		}
 		node = node.Next[0]
 	}
-	return all_keys, return_data
+	return ""
 }
 
 func (s *SkipList) roll() int {

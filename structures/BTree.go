@@ -383,19 +383,19 @@ func (btree *BTree) FindAllPrefix(prefix string) string {
 	return ""
 }
 
-func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
-	res := make([]string, 0)
-	res_val := make([][]byte, 0)
+func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string) string {
+	// res := make([]string, 0)
+	// res_val := make([][]byte, 0)
 
-	data := btree.GetData()
+	// data := btree.GetData()
 
-	for i := 0; i < len(data); i++ {
-		k := string(data[i][0])
+	// for i := 0; i < len(data); i++ {
+	// 	k := string(data[i][0])
 
-		if data[i][2][0] == 0 && min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
-			res = append(res, k)
-			res_val = append(res_val, data[i][1])
-		}
-	}
-	return res, res_val
+	// 	if data[i][2][0] == 0 && min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
+	// 		res = append(res, k)
+	// 		res_val = append(res_val, data[i][1])
+	// 	}
+	// }
+	return ""
 }
