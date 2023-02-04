@@ -72,7 +72,13 @@ func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int
 		//dodati da broji za generaciju
 		generation := 0
 		for j := 0; true; j++ {
-			file, err := os.OpenFile("data/sstables/usertable-0-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+			var file *os.File
+			var err error
+			if sstableType == 2 {
+				file, err = os.OpenFile("data/sstables/usertable-0-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+			} else {
+				file, err = os.OpenFile("data/singlesstables/usertable-0-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+			}
 
 			if os.IsNotExist(err) {
 				break
