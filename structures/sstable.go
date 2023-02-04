@@ -92,7 +92,7 @@ func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *
 	CreateTOC(path)
 
 	merkle := CreateMerkleTree(values)
-	WriteMerkleInFile(merkle)
+	WriteMerkleInFile(merkle, path)
 
 	return &sstable
 }

@@ -95,9 +95,8 @@ func PrintTree(mr *MerkleRoot) {
 	}
 }
 
-func WriteMerkleInFile(mr *MerkleRoot) {
-
-	file, err := os.OpenFile("data/Metadata.txt", os.O_CREATE|os.O_RDWR, 0666)
+func WriteMerkleInFile(mr *MerkleRoot, path string) {
+	file, err := os.OpenFile(path+"-Metadata.txt", os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal()
 	}

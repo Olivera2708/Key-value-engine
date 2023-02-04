@@ -29,7 +29,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 	currentPos := 32
 
 	keys := make([]string, 0)
-	// values := make([][]byte, 0)
+	values := make([][]byte, 0)
 	positions := make([]int, 0)
 
 	initHeader := make([]byte, 32)
@@ -41,7 +41,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 		keys = append(keys, key)
 
 		value := data[i][1]
-		// values = append(values, value)
+		values = append(values, value)
 
 		positions = append(positions, currentPos)
 
@@ -177,6 +177,9 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 	if err != nil {
 		panic(err)
 	}
+
+	merkle := CreateMerkleTree(values)
+	WriteMerkleInFile(merkle, path)
 
 	ssst := SingleSSTable{path}
 	return &ssst
