@@ -16,9 +16,9 @@ func LSM(sstype int, summaryBlockingFactor int) int {
 		if sstype == 1 {
 
 			//fmt.Println("sts")
-			SizeTieredSingle(summaryBlockingFactor)
+			SizeTieredSingle(0, summaryBlockingFactor)
 		} else {
-			fmt.Println("stm")
+			//fmt.Println("stm")
 
 			SizeTieredMulti(0, summaryBlockingFactor)
 		}
@@ -47,247 +47,277 @@ func LSM(sstype int, summaryBlockingFactor int) int {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func SizeTieredSingle(summaryBlockingFactor int) {
-
-	files := make([]os.File, 0)
-	mapa := make(map[int]bool)
-	lengths := make([]uint64, 0)
-
-	for i := 0; true; i++ {
-
-		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
-
-		if os.IsNotExist(err) {
-			break
-		}
-		lenBytes := make([]byte, 8, 8)
-		file.Read(lenBytes)
-		len := binary.LittleEndian.Uint64(lenBytes)
-		fmt.Println(len)
-		lengths = append(lengths, len)
-		file.Seek(32, 0)
-
-		files = append(files, *file)
-
-		mapa[i] = true
-	}
-
-	if len(files) < 2 {
+func SizeTieredSingle(level int, summaryBlockingFactor int) {
+	if level > global.LSMTreeLevel {
 		return
 	}
 
-	newGen := 0
-	for i := 0; true; i++ {
-		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+	totalFiles := 0
+
+	for j := 0; true; j++ {
+		file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+
 		if os.IsNotExist(err) {
-			newGen = i
 			break
 		}
+		totalFiles += 1
 		file.Close()
 	}
 
-	keys := make([]string, 0)
-	values := make([][]byte, 0)
-	positions := make([]int, 0)
-	currentPos := 32
-	lengthCounter := make([]uint64, len(lengths))
+	if totalFiles < global.LSMMinimum {
+		return
+	}
 
-	recMin := make(map[string][]byte)
-	newRec := make(map[string][]byte)
-	newMin := 0
-	newFile, _ := os.Create("data/singlesstables/usertable-" + fmt.Sprint(global.LSMTreeLevel+1) + "-" + fmt.Sprint(newGen) + "-data.db")
-	initialZeros := make([]byte, 32)
-	newFile.Write(initialZeros)
-	for true {
-		newMin = -1
+	for j := 0; j < int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum))); j++ {
 
-		minimums := make([]int, 0)
-		for i := 0; i < len(files); i++ {
-			if mapa[i] {
-				if lengthCounter[i] < lengths[i] {
-					recMin, _ = structures.ReadNextRecord(&files[i])
-					lengthCounter[i]++
-					fmt.Print(lengthCounter)
-					newMin = i
-					minimums = append(minimums, newMin)
-					minimums = append(minimums, len(recMin["key"]))
-					minimums = append(minimums, len(recMin["value"]))
-					break
-				} else {
-					files[i].Close()
-					mapa[i] = false
-				}
+		files := make([]os.File, 0)
+		mapa := make(map[int]bool)
+		lengths := make([]uint64, 0)
+
+		for i := j * global.LSMMinimum; i < (j+1)*global.LSMMinimum; i++ {
+
+			file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
+
+			if os.IsNotExist(err) {
+				break
 			}
+			lenBytes := make([]byte, 8, 8)
+			file.Read(lenBytes)
+			len := binary.LittleEndian.Uint64(lenBytes)
+			//fmt.Println(len)
+			lengths = append(lengths, len)
+			file.Seek(32, 0)
+
+			files = append(files, *file)
+
+			mapa[i-j*global.LSMMinimum] = true
 		}
 
-		if newMin == -1 {
-			break
+		if len(files) < 2 {
+			return
 		}
 
-		// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
+		newGen := 0
+		for i := 0; true; i++ {
+			file, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+			if os.IsNotExist(err) {
+				newGen = i
+				break
+			}
+			file.Close()
+		}
 
-		for i := newMin + 1; i < len(files); i++ {
-			if mapa[i] {
-				if lengthCounter[i] == lengths[i] {
-					files[i].Close()
-					mapa[i] = false
-					continue
-				} else {
-					newRec, _ = structures.ReadNextRecord(&files[i])
-					lengthCounter[i]++
+		keys := make([]string, 0)
+		values := make([][]byte, 0)
+		positions := make([]int, 0)
+		currentPos := 32
+		lengthCounter := make([]uint64, len(lengths))
 
-					if strings.Split(string(newRec["key"]), "-")[0] < strings.Split(string(recMin["key"]), "-")[0] {
-						m := 0
-						for m < len(minimums) {
-							files[minimums[m]].Seek(-29-int64(minimums[m+1])-int64(minimums[m+2]), 1)
-							lengthCounter[m]--
-							m += 3
-						}
+		recMin := make(map[string][]byte)
+		newRec := make(map[string][]byte)
+		newMin := 0
+		newFile, _ := os.Create("data/singlesstables/usertable-" + fmt.Sprint(level+1) + "-" + fmt.Sprint(newGen) + "-data.db")
+		initialZeros := make([]byte, 32)
+		newFile.Write(initialZeros)
+		for true {
+			newMin = -1
 
+			minimums := make([]int, 0)
+			for i := 0; i < len(files); i++ {
+				if mapa[i] {
+					if lengthCounter[i] < lengths[i] {
+						recMin, _ = structures.ReadNextRecord(&files[i])
+						lengthCounter[i]++
+						//fmt.Print(lengthCounter)
 						newMin = i
-
-						minimums := make([]int, 0)
 						minimums = append(minimums, newMin)
-						minimums = append(minimums, len(newRec["key"]))
-						minimums = append(minimums, len(newRec["value"]))
-
-						recMin = newRec
-
-					} else if strings.Split(string(newRec["key"]), "-")[0] > strings.Split(string(recMin["key"]), "-")[0] {
-						files[i].Seek(-29-int64(len(newRec["key"]))-int64(len(newRec["value"])), 1)
-						lengthCounter[i]--
-
+						minimums = append(minimums, len(recMin["key"]))
+						minimums = append(minimums, len(recMin["value"]))
+						break
 					} else {
-
-						minimums = append(minimums, i)
-						minimums = append(minimums, len(newRec["key"]))
-						minimums = append(minimums, len(newRec["value"]))
-						tNew := binary.LittleEndian.Uint64(newRec["timestamp"])
-						tMin := binary.LittleEndian.Uint64(recMin["timestamp"])
-						if tNew > tMin {
-							recMin = newRec
-						}
+						files[i].Close()
+						mapa[i] = false
 					}
 				}
+			}
 
+			if newMin == -1 {
+				break
+			}
+
+			// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
+
+			for i := newMin + 1; i < len(files); i++ {
+				if mapa[i] {
+					if lengthCounter[i] == lengths[i] {
+						files[i].Close()
+						mapa[i] = false
+						continue
+					} else {
+						newRec, _ = structures.ReadNextRecord(&files[i])
+						lengthCounter[i]++
+
+						if strings.Split(string(newRec["key"]), "-")[0] < strings.Split(string(recMin["key"]), "-")[0] {
+							m := 0
+							for m < len(minimums) {
+								files[minimums[m]].Seek(-29-int64(minimums[m+1])-int64(minimums[m+2]), 1)
+								lengthCounter[m]--
+								m += 3
+							}
+
+							newMin = i
+
+							minimums := make([]int, 0)
+							minimums = append(minimums, newMin)
+							minimums = append(minimums, len(newRec["key"]))
+							minimums = append(minimums, len(newRec["value"]))
+
+							recMin = newRec
+
+						} else if strings.Split(string(newRec["key"]), "-")[0] > strings.Split(string(recMin["key"]), "-")[0] {
+							files[i].Seek(-29-int64(len(newRec["key"]))-int64(len(newRec["value"])), 1)
+							lengthCounter[i]--
+
+						} else {
+
+							minimums = append(minimums, i)
+							minimums = append(minimums, len(newRec["key"]))
+							minimums = append(minimums, len(newRec["value"]))
+							tNew := binary.LittleEndian.Uint64(newRec["timestamp"])
+							tMin := binary.LittleEndian.Uint64(recMin["timestamp"])
+							if tNew > tMin {
+								recMin = newRec
+							}
+						}
+					}
+
+				}
+			}
+
+			if recMin["tombstone"][0] == 0 {
+				rec := append(recMin["crc"], recMin["timestamp"]...)
+				rec = append(rec, recMin["tombstone"]...)
+				rec = append(rec, recMin["key_size"]...)
+				rec = append(rec, recMin["val_size"]...)
+				rec = append(rec, recMin["key"]...)
+				rec = append(rec, recMin["value"]...)
+				newFile.Write(rec)
+				values = append(values, recMin["value"])
+				keys = append(keys, string(recMin["key"]))
+				positions = append(positions, currentPos)
+				currentPos += 29 + len(recMin["key"]) + len(recMin["value"])
+			}
+
+		}
+
+		for f := 0; f < len(files); f++ {
+			path := files[f].Name()
+			path = path[:len(path)-8]
+			os.Remove(path + "-data.db")
+			os.Remove(path + "-Metadata.txt")
+
+		}
+
+		newFile.Seek(0, 0)
+		newLenBytes := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(newLenBytes, uint64(len(keys)))
+		newFile.Write(newLenBytes)
+
+		newFile.Seek(8, 0)
+
+		posInd := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(posInd, uint64(currentPos))
+		newFile.Write(posInd)
+
+		newFile.Seek(0, 2)
+
+		positionsSum := make([]int, len(keys))
+		for i := 0; i < len(keys); i++ {
+
+			positionsSum[i] = currentPos
+			keySize := make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(keySize, uint64(len(keys[i])))
+
+			pos1 := make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(pos1, uint64(positions[i]))
+
+			newFile.Write(keySize)
+			newFile.Write([]byte(keys[i]))
+			newFile.Write(pos1)
+			currentPos += 16 + len(keys[i])
+		}
+
+		newFile.Seek(16, 0)
+		posSum := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(posSum, uint64(currentPos))
+		newFile.Write(posSum)
+		newFile.Seek(0, 2)
+
+		len1SumBytes := make([]byte, 8, 8)
+		len2SumBytes := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(len1SumBytes, uint64(len(keys[0])))
+		binary.LittleEndian.PutUint64(len2SumBytes, uint64(len(keys[len(keys)-1])))
+
+		newFile.Write(len1SumBytes)
+		newFile.Write([]byte(keys[0]))
+
+		newFile.Write(len2SumBytes)
+		newFile.Write([]byte(keys[len(keys)-1]))
+
+		currentPos += 16 + len(keys[0]) + len(keys[len(keys)-1])
+
+		for i := 0; i < len(positionsSum); i += 1 {
+			if i%summaryBlockingFactor == 0 {
+
+				keySize1 := make([]byte, 8, 8)
+				binary.LittleEndian.PutUint64(keySize1, uint64(len(keys[i])))
+
+				key1 := []byte(keys[i])
+
+				posSum1 := make([]byte, 8, 8)
+				binary.LittleEndian.PutUint64(posSum1, uint64(positionsSum[i]))
+
+				newFile.Write(keySize1)
+				newFile.Write(key1)
+				newFile.Write(posSum1)
+
+				currentPos += 16 + len([]byte(keys[i]))
 			}
 		}
 
-		if recMin["tombstone"][0] == 0 {
-			rec := append(recMin["crc"], recMin["timestamp"]...)
-			rec = append(rec, recMin["tombstone"]...)
-			rec = append(rec, recMin["key_size"]...)
-			rec = append(rec, recMin["val_size"]...)
-			rec = append(rec, recMin["key"]...)
-			rec = append(rec, recMin["value"]...)
-			newFile.Write(rec)
-			values = append(values, recMin["value"])
-			keys = append(keys, string(recMin["key"]))
-			positions = append(positions, currentPos)
-			currentPos += 29 + len(recMin["key"]) + len(recMin["value"])
+		newFile.Seek(24, 0)
+		posBF := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(posBF, uint64(currentPos))
+
+		newFile.Write(posBF)
+		newFile.Seek(0, 2)
+
+		bf := structures.CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+		for i := 0; i < len(keys); i++ {
+			bf.Add(keys[i])
 		}
 
-	}
-
-	for f := 0; f < len(files); f++ {
-		path := files[f].Name()
-		path = path[:len(path)-8]
-		os.Remove(path + "-data.db")
-		os.Remove(path + "-Metadata.txt")
-
-	}
-
-	newFile.Seek(0, 0)
-	newLenBytes := make([]byte, 8, 8)
-	binary.LittleEndian.PutUint64(newLenBytes, uint64(len(keys)))
-	newFile.Write(newLenBytes)
-
-	newFile.Seek(8, 0)
-
-	posInd := make([]byte, 8, 8)
-	binary.LittleEndian.PutUint64(posInd, uint64(currentPos))
-	newFile.Write(posInd)
-
-	newFile.Seek(0, 2)
-
-	positionsSum := make([]int, len(keys))
-	for i := 0; i < len(keys); i++ {
-
-		positionsSum[i] = currentPos
-		keySize := make([]byte, 8, 8)
-		binary.LittleEndian.PutUint64(keySize, uint64(len(keys[i])))
-
-		pos1 := make([]byte, 8, 8)
-		binary.LittleEndian.PutUint64(pos1, uint64(positions[i]))
-
-		newFile.Write(keySize)
-		newFile.Write([]byte(keys[i]))
-		newFile.Write(pos1)
-		currentPos += 16 + len(keys[i])
-	}
-
-	newFile.Seek(16, 0)
-	posSum := make([]byte, 8, 8)
-	binary.LittleEndian.PutUint64(posSum, uint64(currentPos))
-	newFile.Write(posSum)
-	newFile.Seek(0, 2)
-
-	len1SumBytes := make([]byte, 8, 8)
-	len2SumBytes := make([]byte, 8, 8)
-	binary.LittleEndian.PutUint64(len1SumBytes, uint64(len(keys[0])))
-	binary.LittleEndian.PutUint64(len2SumBytes, uint64(len(keys[len(keys)-1])))
-
-	newFile.Write(len1SumBytes)
-	newFile.Write([]byte(keys[0]))
-
-	newFile.Write(len2SumBytes)
-	newFile.Write([]byte(keys[len(keys)-1]))
-
-	currentPos += 16 + len(keys[0]) + len(keys[len(keys)-1])
-
-	for i := 0; i < len(positionsSum); i += 1 {
-		if i%summaryBlockingFactor == 0 {
-
-			keySize1 := make([]byte, 8, 8)
-			binary.LittleEndian.PutUint64(keySize1, uint64(len(keys[i])))
-
-			key1 := []byte(keys[i])
-
-			posSum1 := make([]byte, 8, 8)
-			binary.LittleEndian.PutUint64(posSum1, uint64(positionsSum[i]))
-
-			newFile.Write(keySize1)
-			newFile.Write(key1)
-			newFile.Write(posSum1)
-
-			currentPos += 16 + len([]byte(keys[i]))
+		encoder := gob.NewEncoder(newFile)
+		err := encoder.Encode(bf)
+		if err != nil {
+			panic(err)
 		}
+
+		newFile.Close()
+
+		merkle := structures.CreateMerkleTree(values)
+		structures.WriteMerkleInFile(merkle, "data/singlesstables/usertable-"+fmt.Sprint(level+1)+"-"+fmt.Sprint(newGen))
+
 	}
 
-	newFile.Seek(24, 0)
-	posBF := make([]byte, 8, 8)
-	binary.LittleEndian.PutUint64(posBF, uint64(currentPos))
-
-	newFile.Write(posBF)
-	newFile.Seek(0, 2)
-
-	bf := structures.CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
-	for i := 0; i < len(keys); i++ {
-		bf.Add(keys[i])
+	for j := int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum))) * global.LSMMinimum; j < totalFiles; j++ {
+		os.Rename("data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-data.db",
+			"data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-data.db")
+		os.Rename("data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j)+"-Metadata.txt",
+			"data/singlesstables/usertable-"+fmt.Sprint(level)+"-"+fmt.Sprint(j-int(math.Floor(float64(totalFiles)/float64(global.LSMMinimum)))*global.LSMMinimum)+"-Metadata.txt")
 	}
 
-	encoder := gob.NewEncoder(newFile)
-	err := encoder.Encode(bf)
-	if err != nil {
-		panic(err)
-	}
-
-	newFile.Close()
-
-	merkle := structures.CreateMerkleTree(values)
-	structures.WriteMerkleInFile(merkle, "data/singlesstables/usertable-"+fmt.Sprint(global.LSMTreeLevel+1)+"-"+fmt.Sprint(newGen))
-
-	//SizeTieredSingle(summaryBlockingFactor)
+	SizeTieredSingle(level+1, summaryBlockingFactor)
 
 }
 
@@ -307,7 +337,6 @@ func SizeTieredSingle(summaryBlockingFactor int) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func SizeTieredMulti(level int, summaryBlockingFactor int) {
-	fmt.Println("Na pocetku jeste")
 
 	if level > global.LSMTreeLevel {
 		return
