@@ -38,8 +38,8 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 	min_prefix = strings.Split(min_prefix, "-")[0]
 
 	n := global.ResultsNumber
-	var all_data [][]byte
-	var all_keys []string
+	all_data := [][]byte{}
+	all_keys := []string{}
 	var paths []string
 	var positions1 []uint64
 	//u memtable
