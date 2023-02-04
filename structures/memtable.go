@@ -3,7 +3,7 @@ package structures
 import "Projekat/global"
 
 type Memtable struct {
-	data         MemtableData
+	Data         MemtableData
 	capacity     uint
 	max_capacity uint
 }
@@ -21,7 +21,7 @@ func CreateMemtable(height int, max_cap uint, stat int) *Memtable {
 }
 
 func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp uint64) {
-	new := memtable.data.Add(key, value, stat, timestamp)
+	new := memtable.Data.Add(key, value, stat, timestamp)
 	if new {
 		memtable.capacity++
 	}
@@ -37,22 +37,22 @@ func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp uint
 // 	return element
 // }
 
-func (Memtable *Memtable) FindAllPrefix(prefix string) ([]string, [][]byte) {
-	return Memtable.data.FindAllPrefix(prefix)
+func (Memtable *Memtable) FindAllPrefix(prefix string) string {
+	return Memtable.Data.FindAllPrefix(prefix)
 }
 
 func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
-	return Memtable.data.FindAllPrefixRange(min_prefix, max_prefix)
+	return Memtable.Data.FindAllPrefixRange(min_prefix, max_prefix)
 }
 
 func (Memtable *Memtable) Find(key string) (found bool, value []byte, all_key string) {
-	found, skiplist, val, new_key := Memtable.data.Found(key)
+	found, skiplist, val, new_key := Memtable.Data.Found(key)
 	if found {
 		if global.MemTableDataType == 1 {
-			if skiplist.status == 1 {
+			if skiplist.Status == 1 {
 				return false, nil, ""
 			} else {
-				return true, skiplist.value, skiplist.key
+				return true, skiplist.Value, skiplist.Key
 			}
 		} else {
 			return true, val, new_key
@@ -63,7 +63,7 @@ func (Memtable *Memtable) Find(key string) (found bool, value []byte, all_key st
 
 func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int, summaryBlockingFactor int) int {
 	if float64(memtable.capacity)/float64(memtable.max_capacity)*100 >= float64(percentage) { //ovde treba videti odakle se uzima granica popunjenosti
-		data := memtable.data.GetData()
+		data := memtable.Data.GetData()
 		if sstableType == 2 {
 			CreateSSTable(data, *generation, summaryBlockingFactor)
 		} else {
@@ -72,9 +72,9 @@ func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int
 		*generation++
 		memtable.capacity = 0
 		if global.MemTableDataType == 1 {
-			memtable.data = CreateSkipList(global.SkipListMaxHeight, 1, 0) //obrisali -1 za maxh
+			memtable.Data = CreateSkipList(global.SkipListMaxHeight, 1, 0) //obrisali -1 za maxh
 		} else {
-			memtable.data = CreateBTree("", nil, 0, 0)
+			memtable.Data = CreateBTree("", nil, 0, 0)
 		}
 		return 1
 	}

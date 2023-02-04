@@ -1,0 +1,5 @@
+data/sstables/usertable-0-0
+data/sstables/usertable-0-0-data.db
+data/sstables/usertable-0-0-index.db
+data/sstables/usertable-0-0-summary.db
+data/sstables/usertable-0-0-filter.db

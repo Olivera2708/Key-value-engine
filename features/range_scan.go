@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int, ResultsNumber int) {
+func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int) {
 	min_prefix := ""
 	max_prefix := ""
 
@@ -60,6 +60,6 @@ func RANGE_SCAN(mem *structures.Memtable, level int, sstableType int, summaryBlo
 	if len(all_data) == 0 {
 		fmt.Println("Nema rezultata")
 	} else {
-		writerPrefix(all_keys, all_data, ResultsNumber)
+		writerPrefix(all_keys, all_data)
 	}
 }

@@ -364,9 +364,9 @@ func gd(node *TreeNode, data *[][][]byte) {
 	}
 }
 
-func (btree *BTree) FindAllPrefix(prefix string) ([]string, [][]byte) {
-	res := make([]string, 0)
-	res_val := make([][]byte, 0)
+func (btree *BTree) FindAllPrefix(prefix string) string {
+	// res := make([]string, 0)
+	// res_val := make([][]byte, 0)
 
 	data := btree.GetData()
 
@@ -374,11 +374,13 @@ func (btree *BTree) FindAllPrefix(prefix string) ([]string, [][]byte) {
 		k := string(data[i][0])
 
 		if data[i][2][0] == 0 && strings.HasPrefix(k, prefix) {
-			res = append(res, k)
-			res_val = append(res_val, data[i][1])
+			return k
+			// res = append(res, k)
+			// res_val = append(res_val, data[i][1])
 		}
 	}
-	return res, res_val
+	// return res, res_val
+	return ""
 }
 
 func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {

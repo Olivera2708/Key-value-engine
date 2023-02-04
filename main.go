@@ -49,7 +49,7 @@ func main() {
 	LSMAlgorithm := 1.0 //size -> 1, lleveled -> 2
 	TokenTime := 10.0
 	TokenNumber := 5.0
-	ResultsNumber := 5.0
+	global.ResultsNumber = 5
 	HLLp := 8.0  // broj vodecih bajtova
 	CMSp := 0.1  // preciznost
 	CMSd := 0.01 // tacnost
@@ -76,7 +76,7 @@ func main() {
 		LSMAlgorithm = payload["LSMTree"]["LSMAlgorithm"]
 		TokenTime = payload["TokenBucket"]["TokenTime"]
 		TokenNumber = payload["TokenBucket"]["TokenNumber"]
-		ResultsNumber = payload["Pagination"]["ResultsNumber"]
+		global.ResultsNumber = int(payload["Pagination"]["ResultsNumber"])
 		HLLp = payload["HLL"]["p"]
 		CMSp = float64(payload["CMS"]["p"])
 		CMSd = float64(payload["CMS"]["d"])
@@ -129,7 +129,7 @@ func main() {
 		fmt.Println("-----------------------------------------------")
 		fmt.Print("\nIzaberite opciju -> ")
 		fmt.Scanln(&a)
-		// a = "5"
+		// a = "4"
 
 		if tocken_bucket(int(TokenTime), int(TokenNumber), TokenList) {
 			switch a {
@@ -143,9 +143,9 @@ func main() {
 				features.DELETE(wal, mem, cache)
 				fmt.Println("Uspešno obrisan")
 			case "4":
-				features.LIST(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor), int(ResultsNumber))
+				features.LIST(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor))
 			case "5":
-				features.RANGE_SCAN(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor), int(ResultsNumber))
+				features.RANGE_SCAN(mem, int(LSMTreeLevel), int(SSTableType), int(summaryBlockingFactor))
 			case "6":
 				if generation > 1 {
 					generation = features.LSM(int(SSTableType), int(LSMAlgorithm), int(LSMTreeLevel), int(summaryBlockingFactor))

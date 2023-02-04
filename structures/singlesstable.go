@@ -247,14 +247,14 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key), pos, posInd)
 
 				return found, value, new_key
 			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
 				file.Read(position)
 				pos := binary.LittleEndian.Uint64(position)
 
-				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key), pos, posInd)
 
 				return found, value, new_key
 			}
@@ -263,7 +263,7 @@ func ReadSingleSummary(path, key string, summaryBlockingFactor int) (bool, []byt
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
 				pos := binary.LittleEndian.Uint64(position)
-				found, value, new_key := ReadSingleIndex(file, string(key1), pos, posInd)
+				found, value, new_key := ReadSingleIndex(file, string(key), pos, posInd)
 				return found, value, new_key
 			}
 		}
@@ -312,10 +312,154 @@ func ReadSingleSSTable(file *os.File, key string, pos uint64) []byte {
 	return value
 }
 
-func FindAllPrefixSingle(path string, prefix string, summaryBlockingFactor int) []string {
-	return_data := []string{}
+func FindAllPrefixSingle(path string, prefix string, summaryBlockingFactor int) (string, uint64) {
+	return FindPrefixSummarySingle(path, prefix, summaryBlockingFactor)
+}
 
-	return return_data
+func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int) (string, uint64) {
+	file, err := os.OpenFile(path+"-data.db", os.O_RDONLY, 0666)
+	defer file.Close()
+	lengthBytes := make([]byte, 8, 8)
+	posIndBytes := make([]byte, 8, 8)
+	posSumBytes := make([]byte, 8, 8)
+	posBFBytes := make([]byte, 8, 8)
+	file.Read(lengthBytes)
+	file.Read(posIndBytes)
+	file.Read(posSumBytes)
+	file.Read(posBFBytes)
+	length := binary.LittleEndian.Uint64(lengthBytes)
+	// posInd := binary.LittleEndian.Uint64(posIndBytes)
+	posSum := binary.LittleEndian.Uint64(posSumBytes)
+	posBF := binary.LittleEndian.Uint64(posBFBytes)
+	file.Seek(int64(posBF), 0)
+
+	decoder := gob.NewDecoder(file)
+	var srs = new(BloomF)
+	for {
+		err = decoder.Decode(srs)
+		if err != nil {
+			break
+		}
+	}
+
+	isHere := srs.Query(key)
+	if !isHere {
+		return "", 0
+	}
+
+	file.Seek(int64(posSum), 0)
+
+	startLen := make([]byte, 8)
+	endLen := make([]byte, 8)
+
+	file.Read(startLen)
+	startL := binary.LittleEndian.Uint64(startLen)
+	startIndex := make([]byte, startL)
+	file.Read(startIndex)
+	file.Read(endLen)
+	endL := binary.LittleEndian.Uint64(endLen)
+	endIndex := make([]byte, endL)
+	file.Read(endIndex)
+
+	fmt.Println("start indeks: " + string(startIndex))
+	fmt.Println("end indeks" + string(endIndex))
+	if strings.Split(key, "-")[0] >= strings.Split(string(startIndex), "-")[0] && strings.Split(key, "-")[0] <= strings.Split(string(endIndex), "-")[0] {
+		position := make([]byte, 8)
+		for i := 0; i < int(math.Ceil(float64(length)/float64(summaryBlockingFactor))); i++ {
+
+			//fmt.Print(int(math.Ceil(float64(length) / float64(SUMMARY_BLOCKING_FACTOR))))
+
+			keyLen := make([]byte, 8)
+			file.Read(keyLen)
+			keyLenNum := binary.LittleEndian.Uint64(keyLen)
+			key1 := make([]byte, keyLenNum)
+			file.Read(key1)
+			if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
+				file.Seek(-(int64(keyLenNum) + 16), 1)
+				file.Read(position)
+				pos := binary.LittleEndian.Uint64(position)
+
+				path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
+
+				return path1, pos1
+			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
+				file.Read(position)
+				pos := binary.LittleEndian.Uint64(position)
+
+				path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
+
+				return path1, pos1
+			}
+			// file.Seek(8, 1)
+			file.Read(position)
+
+			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {
+				pos := binary.LittleEndian.Uint64(position)
+				path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
+				return path1, pos1
+			}
+		}
+	}
+	return "", 0
+
+}
+
+func FindAllPrefixIndexSingle(path string, prefix string, position uint64, file *os.File) (string, uint64) {
+	fmt.Println("Indeks")
+	// file.Seek(int64(posInd), 0) // ups
+	file.Seek(int64(position), 0)
+	position1 := make([]byte, 8)
+	for true {
+		keyLen := make([]byte, 8)
+		file.Read(keyLen)
+		keyLenNum := binary.LittleEndian.Uint64(keyLen)
+		key1 := make([]byte, keyLenNum)
+		file.Read(key1)
+		if strings.HasPrefix(strings.Split(string(key1), "-")[0], strings.Split(prefix, "-")[0]) {
+			file.Read(position1)
+			pos := binary.LittleEndian.Uint64(position1)
+			// value := FindPrefixSSTableSingle(file, string(key1), pos)
+			return path, pos
+		} else if strings.Split(prefix, "-")[0] < strings.Split(string(key1), "-")[0] {
+			return "", 0
+		}
+		file.Seek(8, 1)
+	}
+	return "", 0
+}
+
+func FindPrefixSSTableSingle(key string, position uint64, file *os.File) (string, []byte, []byte) {
+	file.Seek(8, 0)
+	endBytes := make([]byte, 8)
+	file.Read(endBytes)
+	end := binary.LittleEndian.Uint64(endBytes)
+	if position >= end {
+		return "", []byte(""), []byte("")
+	}
+	file.Seek(int64(position), 0)
+	file.Seek(4, 1)
+	timestamp := make([]byte, TIMESTAMP_SIZE)
+	file.Read(timestamp)
+	file.Seek(1, 1)
+	keyLen := make([]byte, 8, 8)
+	_, err := file.Read(keyLen)
+	if err != nil {
+		return "", []byte(""), []byte("")
+	}
+	keyLenNum := binary.LittleEndian.Uint64(keyLen)
+	valLen := make([]byte, 8, 8)
+	file.Read(valLen)
+	valLenNum := binary.LittleEndian.Uint64(valLen)
+	key1 := make([]byte, keyLenNum, keyLenNum)
+	file.Read(key1)
+	value := make([]byte, valLenNum, valLenNum)
+	file.Read(value)
+	if strings.HasPrefix(string(key1), key) {
+		return string(key1), value, timestamp
+	} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
+		return "", []byte(""), []byte("")
+	}
+	return "", []byte(""), []byte("")
 }
 
 func FindAllPrefixRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) []string {

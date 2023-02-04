@@ -354,13 +354,13 @@ func ReadNextRecord(file *os.File) (map[string][]byte, bool) {
 	return data, false
 }
 
-func FindAllPrefixMultiple(path string, key string) ([]string, [][]byte) {
+func FindAllPrefixMultiple(path string, key string) (string, uint64) {
 	return FindPrefixSummaryMultiple(path, key)
 }
 
-func FindPrefixSummaryMultiple(path string, key string) ([]string, [][]byte) {
-	return_data := [][]byte{}
-	all_keys := []string{}
+func FindPrefixSummaryMultiple(path string, key string) (string, uint64) {
+	// return_data := [][]byte{}
+	// all_keys := []string{}
 
 	startLen := make([]byte, 8)
 	endLen := make([]byte, 8)
@@ -387,16 +387,17 @@ func FindPrefixSummaryMultiple(path string, key string) ([]string, [][]byte) {
 		file.Read(key1)
 		file.Read(position)
 		pos := binary.LittleEndian.Uint64(position)
-		keys, values := FindPrefixIndexMultiple(path, key, pos)
-		return_data = append(return_data, values...)
-		all_keys = append(all_keys, keys...)
+		returnFile, returnPos := FindPrefixIndexMultiple(path, key, pos)
+		// return_data = append(return_data, values...)
+		// all_keys = append(all_keys, keys...)
+		return returnFile, returnPos
 	}
-	return all_keys, return_data
+	return "", 0
 }
 
-func FindPrefixIndexMultiple(path string, key string, position uint64) ([]string, [][]byte) {
-	return_data := [][]byte{}
-	all_keys := []string{}
+func FindPrefixIndexMultiple(path string, key string, position uint64) (string, uint64) {
+	// return_data := [][]byte{}
+	// all_keys := []string{}
 	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -417,51 +418,44 @@ func FindPrefixIndexMultiple(path string, key string, position uint64) ([]string
 		pos := binary.LittleEndian.Uint64(position1)
 
 		if strings.HasPrefix(string(key1), key) {
-			keys, values := FindPrefixSSTableMultiple(path, string(key1), pos)
-			return_data = append(return_data, values...)
-			all_keys = append(all_keys, keys...)
-			break
+			// keys, values := FindPrefixSSTableMultiple(path, string(key1), pos)
+			// return_data = append(return_data, values...)
+			// all_keys = append(all_keys, keys...)
+			return path, pos
+			// break
 		} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
 			break
 		}
 		// file.Seek(8, 1)
 	}
-	return all_keys, return_data
+	return "", 0
 }
 
-func FindPrefixSSTableMultiple(path string, key string, position uint64) ([]string, [][]byte) {
-	fmt.Println("SStable")
-	all_data := [][]byte{}
-	all_keys := []string{}
-	file, err := os.OpenFile(path+"-data.db", os.O_RDWR, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+func FindPrefixSSTableMultiple(key string, position uint64, file *os.File) (string, []byte, []byte) {
 	file.Seek(int64(position), 0)
-	for {
-		file.Seek(13, 1)
-		keyLen := make([]byte, 8, 8)
-		_, err = file.Read(keyLen)
-		if err != nil {
-			break
-		}
-		keyLenNum := binary.LittleEndian.Uint64(keyLen)
-		valLen := make([]byte, 8, 8)
-		file.Read(valLen)
-		valLenNum := binary.LittleEndian.Uint64(valLen)
-		key1 := make([]byte, keyLenNum, keyLenNum)
-		file.Read(key1)
-		value := make([]byte, valLenNum, valLenNum)
-		file.Read(value)
-		if strings.HasPrefix(string(key1), key) {
-			all_keys = append(all_keys, string(key1))
-			all_data = append(all_data, value)
-		} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
-			break
-		}
+	file.Seek(4, 1)
+	timestamp := make([]byte, TIMESTAMP_SIZE)
+	file.Read(timestamp)
+	file.Seek(1, 1)
+	keyLen := make([]byte, 8, 8)
+	_, err := file.Read(keyLen)
+	if err != nil {
+		return "", []byte(""), []byte("")
 	}
-	return all_keys, all_data
+	keyLenNum := binary.LittleEndian.Uint64(keyLen)
+	valLen := make([]byte, 8, 8)
+	file.Read(valLen)
+	valLenNum := binary.LittleEndian.Uint64(valLen)
+	key1 := make([]byte, keyLenNum, keyLenNum)
+	file.Read(key1)
+	value := make([]byte, valLenNum, valLenNum)
+	file.Read(value)
+	if strings.HasPrefix(string(key1), key) {
+		return string(key1), value, timestamp
+	} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
+		return "", []byte(""), []byte("")
+	}
+	return "", []byte(""), []byte("")
 }
 
 func FindAllPrefixRangeMultiple(path string, min_prefix string, max_prefix string) ([]string, [][]byte) {

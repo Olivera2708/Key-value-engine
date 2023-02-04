@@ -1,14 +1,18 @@
 package features
 
 import (
+	"Projekat/global"
 	"Projekat/structures"
+	"encoding/binary"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
-func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int, ResultsNumber int) {
+func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingFactor int) {
 	prefix := ""
 
 	for true {
@@ -19,11 +23,15 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 			break
 		}
 	}
+	n := global.ResultsNumber
+	all_data := [][]byte{}
+	all_keys := []string{}
+	var paths []string
+	var positions1 []uint64
 
 	//u memtable
-	// all_data := [][]byte{}
-	all_keys, all_data := mem.FindAllPrefix(prefix)
-	// all_keys := []string{}
+	mem_key := mem.FindAllPrefix(prefix)
+	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
 	for lvl := 0; lvl < level; lvl++ {
@@ -33,34 +41,165 @@ func LIST(mem *structures.Memtable, level int, sstableType int, summaryBlockingF
 				if os.IsNotExist(err) {
 					break
 				}
-				keys, values := structures.FindAllPrefixMultiple("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), prefix)
-				all_data = append(all_data, values...)
-				all_keys = append(all_keys, keys...)
+				path, position := structures.FindAllPrefixMultiple("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), prefix)
+				if path != "" {
+					paths = append(paths, path)
+					positions1 = append(positions1, position)
+				}
 			} else {
 				_, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
 				if os.IsNotExist(err) {
 					break
 				}
-				all_keys = append(all_keys, structures.FindAllPrefixSingle("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", prefix, summaryBlockingFactor)...)
+				path, position := structures.FindAllPrefixSingle("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), prefix, summaryBlockingFactor)
+				if path != "" {
+					paths = append(paths, path)
+					positions1 = append(positions1, position)
+				}
 			}
 		}
 	}
+	currentPage := -1
 
-	//ispis
-	if len(all_data) == 0 {
-		fmt.Println("Nema rezultata")
-	} else {
-		writerPrefix(all_keys, all_data, ResultsNumber)
+	for true {
+		all_data = [][]byte{}
+		all_keys = []string{}
+		_, node, _, _ := mem.Data.Found(mem_key)
+
+		positions := make([]uint64, len(positions1))
+		copy(positions, positions1)
+		pageNumber := ""
+
+		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
+		fmt.Scan(&pageNumber)
+		// pageNumber = "1"
+
+		num, err := strconv.Atoi(pageNumber)
+		if err != nil {
+			if pageNumber == "x" {
+				break
+			}
+			if pageNumber == "p" && currentPage > 1 {
+				currentPage--
+			} else if pageNumber == "s" && currentPage > 0 { // && currentPage*global.ResultsNumber < len(all_data)
+				currentPage++
+			} else {
+				fmt.Println("Trazena strana ne postoji")
+				continue
+			}
+
+		} else if num < 1 { // || (num-1)*global.ResultsNumber >= len(all_data)
+			fmt.Println("Neispravan broj strana")
+			continue
+		} else {
+			currentPage = num
+		}
+
+		var best string
+		var best_val []byte
+		//ispis
+		files := make([]os.File, 0)
+		for j := 0; j < len(paths); j++ {
+			file, err := os.Open(paths[j] + "-data.db")
+			if err != nil {
+				log.Fatal(err)
+			}
+			file.Seek(0, 0)
+			files = append(files, *file)
+		}
+
+		var isMem bool
+		var indices []int
+		var offsets []int64
+		var bestTime uint64
+
+		for i := 0; true; i++ {
+			if node != nil && strings.HasPrefix(node.Key, prefix) {
+				best = node.Key
+				best_val = node.Value
+				bestTime = node.Timestamp
+				isMem = true //sta ako u mem nema prefiksa???
+			}
+			counter := 0
+			for j := 0; j < len(files); j++ {
+				var key string
+				var val []byte
+				var timeS []byte
+				if sstableType == 2 {
+					key, val, timeS = structures.FindPrefixSSTableMultiple(prefix, positions[j], &files[j])
+				} else {
+					key, val, timeS = structures.FindPrefixSSTableSingle(prefix, positions[j], &files[j])
+				}
+				offset, err := files[j].Seek(0, io.SeekCurrent)
+				if err != nil {
+					log.Fatal(err)
+				}
+				if strings.Split(key, "-")[0] == "" {
+					counter++
+					continue
+				}
+				timestamp := binary.LittleEndian.Uint64(timeS)
+				if strings.Split(key, "-")[0] < strings.Split(best, "-")[0] || strings.Split(best, "-")[0] == "" {
+					best = key
+					best_val = val
+					indices = make([]int, 1)
+					offsets = make([]int64, 1)
+					indices[0] = j
+					offsets[0] = offset
+					isMem = false
+				} else if strings.Split(key, "-")[0] == strings.Split(best, "-")[0] {
+					indices = append(indices, j)
+					offsets = append(offsets, offset)
+					if bestTime < timestamp {
+						best = key
+						best_val = val
+						bestTime = timestamp
+					}
+				}
+			}
+			if (counter == len(files) && !isMem) || len(all_data) == n {
+				break
+			}
+			if isMem && node != nil {
+				node = node.Next[0]
+				if node == nil {
+					isMem = false
+				}
+			}
+			for k := 0; k < len(indices); k++ {
+				positions[indices[k]] = uint64(offsets[k])
+			}
+			if i >= n*(currentPage-1) && i < n*(currentPage) {
+				all_keys = append(all_keys, best)
+				all_data = append(all_data, best_val)
+			}
+			best = ""
+		}
+		for j := 0; j < len(files); j++ {
+			files[j].Close()
+		}
+		if len(all_data) == 0 {
+			fmt.Println("Nema rezultata")
+			if pageNumber == "p" {
+				currentPage = 1
+			} else if pageNumber == "s" {
+				currentPage--
+			} else {
+				currentPage = -1
+			}
+		} else {
+			writeAllPrefixData(all_keys, all_data, currentPage)
+		}
 	}
 }
 
-func writerPrefix(all_keys []string, all_data [][]byte, ResultsNumber int) {
+func writerPrefix(all_keys []string, all_data [][]byte) {
 	pageNumber := ""
 	currentPage := -1
 	for true {
 		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
-		fmt.Scan(&pageNumber)
-		// pageNumber = "1"
+		// fmt.Scan(&pageNumber)
+		pageNumber = "2"
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {
 			if pageNumber == "x" {
@@ -69,29 +208,29 @@ func writerPrefix(all_keys []string, all_data [][]byte, ResultsNumber int) {
 			if currentPage != -1 {
 				if pageNumber == "p" && currentPage > 1 {
 					currentPage--
-					writeAllPrefixData(all_keys, all_data, ResultsNumber, currentPage)
-				} else if pageNumber == "s" && currentPage*ResultsNumber < len(all_data) {
+					writeAllPrefixData(all_keys, all_data, currentPage)
+				} else if pageNumber == "s" && currentPage*global.ResultsNumber < len(all_data) {
 					currentPage++
-					writeAllPrefixData(all_keys, all_data, ResultsNumber, currentPage)
+					writeAllPrefixData(all_keys, all_data, currentPage)
 				} else {
 					fmt.Println("Trazena strana ne postoji")
 				}
 			} else {
 				fmt.Println("Potrebno je uneti broj")
 			}
-		} else if num < 1 || (num-1)*ResultsNumber >= len(all_data) {
+		} else if num < 1 || (num-1)*global.ResultsNumber >= len(all_data) {
 			fmt.Println("Neispravan broj strana")
 		} else {
 			currentPage = num
-			writeAllPrefixData(all_keys, all_data, ResultsNumber, currentPage)
+			writeAllPrefixData(all_keys, all_data, currentPage)
 		}
 	}
 }
 
-func writeAllPrefixData(all_keys []string, all_data [][]byte, ResultsNumber int, pageNumber int) {
-	start := (pageNumber - 1) * ResultsNumber
+func writeAllPrefixData(all_keys []string, all_data [][]byte, pageNumber int) {
+	// start := (pageNumber - 1) * global.ResultsNumber
 
-	for i := start; i < start+ResultsNumber; i++ {
+	for i := 0; i < len(all_data); i++ {
 		if i >= len(all_data) {
 			break
 		}
@@ -110,6 +249,6 @@ func writeAllPrefixData(all_keys []string, all_data [][]byte, ResultsNumber int,
 			write_key = strings.ReplaceAll(write_key, "-simHash", "")
 			write_value = "Sim Hash"
 		}
-		fmt.Println(fmt.Sprint(i+1) + ". \t" + "ključ: " + write_key + "\n\tvrednost: " + write_value)
+		fmt.Println(fmt.Sprint(i+1+global.ResultsNumber*(pageNumber-1)) + ". \t" + "ključ: " + write_key + "\n\tvrednost: " + write_value)
 	}
 }

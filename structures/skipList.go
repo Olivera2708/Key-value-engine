@@ -9,7 +9,7 @@ import (
 type MemtableData interface {
 	Add(key string, element []byte, stat int, timestamp uint64) bool
 	Found(key string) (bool, *SkipListNode, []byte, string)
-	FindAllPrefix(prefix string) ([]string, [][]byte)
+	FindAllPrefix(prefix string) string
 	FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte)
 	GetData() [][][]byte
 }
@@ -22,16 +22,16 @@ type SkipList struct {
 }
 
 type SkipListNode struct {
-	key       string
-	value     []byte
-	status    int
-	next      []*SkipListNode
-	prev      *SkipListNode
-	timestamp uint64
+	Key       string
+	Value     []byte
+	Status    int
+	Next      []*SkipListNode
+	Prev      *SkipListNode
+	Timestamp uint64
 }
 
 func CreateSkipList(maxHeight, height, size int) *SkipList {
-	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{key: "", value: nil, status: 0, next: make([]*SkipListNode, maxHeight), prev: nil, timestamp: 0}}
+	return &SkipList{maxHeight: maxHeight, height: height, size: size, head: &SkipListNode{Key: "", Value: nil, Status: 0, Next: make([]*SkipListNode, maxHeight), Prev: nil, Timestamp: 0}}
 }
 
 func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) bool {
@@ -45,19 +45,19 @@ func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) b
 	if r > h {
 		s.height = r
 	}
-	newNode := SkipListNode{key: key, value: element, status: stat, next: make([]*SkipListNode, r), prev: node, timestamp: timestamp}
+	newNode := SkipListNode{Key: key, Value: element, Status: stat, Next: make([]*SkipListNode, r), Prev: node, Timestamp: timestamp}
 	for i := 0; i < r; i++ { //!!!
-		for i >= len(node.next) {
-			if node.prev == nil {
+		for i >= len(node.Next) {
+			if node.Prev == nil {
 				break
 			}
-			node = node.prev
+			node = node.Prev
 		}
-		newNode.next[i] = node.next[i]
-		node.next[i] = &newNode
+		newNode.Next[i] = node.Next[i]
+		node.Next[i] = &newNode
 	}
-	if newNode.next[0] != nil {
-		newNode.next[0].prev = &newNode
+	if newNode.Next[0] != nil {
+		newNode.Next[0].Prev = &newNode
 	}
 	return true
 }
@@ -94,15 +94,15 @@ func (s *SkipList) Add(key string, element []byte, stat int, timestamp uint64) b
 
 func (s *SkipList) Found(key string) (bool, *SkipListNode, []byte, string) {
 	pronadjen := false
-	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
+	node := SkipListNode{s.head.Key, s.head.Value, s.head.Status, s.head.Next, nil, s.head.Timestamp}
 	for i := s.height - 1; i >= 0; { //stavili smo -1
-		if node.next[i] != nil {
-			if strings.Split(node.next[i].key, "-")[0] < strings.Split(key, "-")[0] {
-				node = *node.next[i]
+		if node.Next[i] != nil {
+			if strings.Split(node.Next[i].Key, "-")[0] < strings.Split(key, "-")[0] {
+				node = *node.Next[i]
 				// } else if node.next[i].key == key && node.status == 0 {
-			} else if strings.Split(node.next[i].key, "-")[0] == strings.Split(key, "-")[0] && node.status == 0 {
+			} else if strings.Split(node.Next[i].Key, "-")[0] == strings.Split(key, "-")[0] && node.Status == 0 {
 				pronadjen = true
-				node = *node.next[i]
+				node = *node.Next[i]
 				break
 			} else {
 				i--
@@ -115,15 +115,15 @@ func (s *SkipList) Found(key string) (bool, *SkipListNode, []byte, string) {
 }
 
 func (s *SkipList) Update(key string, element []byte, stat int) bool {
-	node := SkipListNode{s.head.key, s.head.value, s.head.status, s.head.next, nil, s.head.timestamp}
+	node := SkipListNode{s.head.Key, s.head.Value, s.head.Status, s.head.Next, nil, s.head.Timestamp}
 	for i := s.height - 1; i >= 0; { //dodali -1
-		if node.next[i] != nil {
-			if strings.Split(node.next[i].key, "-")[0] < strings.Split(key, "-")[0] {
-				node = *node.next[i]
-			} else if strings.Split(node.next[i].key, "-")[0] == strings.Split(key, "-")[0] {
-				node.next[i].key = key
-				node.next[i].value = element
-				node.next[i].status = stat
+		if node.Next[i] != nil {
+			if strings.Split(node.Next[i].Key, "-")[0] < strings.Split(key, "-")[0] {
+				node = *node.Next[i]
+			} else if strings.Split(node.Next[i].Key, "-")[0] == strings.Split(key, "-")[0] {
+				node.Next[i].Key = key
+				node.Next[i].Value = element
+				node.Next[i].Status = stat
 				return true
 			} else {
 				i--
@@ -135,32 +135,34 @@ func (s *SkipList) Update(key string, element []byte, stat int) bool {
 	return false
 }
 
-func (s *SkipList) FindAllPrefix(prefix string) ([]string, [][]byte) {
-	node := s.head.next[0]
-	return_data := [][]byte{}
-	all_keys := []string{}
+func (s *SkipList) FindAllPrefix(prefix string) string {
+	node := s.head.Next[0]
+	// return_data := [][]byte{}
+	// all_keys := []string{}
 
 	for node != nil {
-		if node.status == 0 && strings.HasPrefix(strings.Split(node.key, "-")[0], prefix) {
-			all_keys = append(all_keys, node.key)
-			return_data = append(return_data, node.value)
+		if node.Status == 0 && strings.HasPrefix(strings.Split(node.Key, "-")[0], prefix) {
+			return node.Key
+			// all_keys = append(all_keys, node.key)
+			// return_data = append(return_data, node.value)
 		}
-		node = node.next[0]
+		node = node.Next[0]
 	}
-	return all_keys, return_data
+	return ""
 }
 
 func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string) ([]string, [][]byte) {
 	return_data := [][]byte{}
 	all_keys := []string{}
-	node := s.head.next[0]
+	node := s.head.Next[0]
 
 	for node != nil {
-		if node.status == 0 && min_prefix <= strings.Split(node.key, "-")[0] && max_prefix >= strings.Split(node.key, "-")[0] {
-			all_keys = append(all_keys, node.key)
-			return_data = append(return_data, node.value)
+		if node.Status == 0 && min_prefix <= strings.Split(node.Key, "-")[0] && max_prefix >= strings.Split(node.Key, "-")[0] {
+			// return node.key
+			all_keys = append(all_keys, node.Key)
+			return_data = append(return_data, node.Value)
 		}
-		node = node.next[0]
+		node = node.Next[0]
 	}
 	return all_keys, return_data
 }
@@ -185,16 +187,16 @@ func (s *SkipList) roll() int {
 
 func (s *SkipList) GetData() [][][]byte { // key, value, tombstone, timestamp
 	data := make([][][]byte, 0)
-	for node := s.head.next[0]; node != nil; node = node.next[0] {
+	for node := s.head.Next[0]; node != nil; node = node.Next[0] {
 		newRec := make([][]byte, 4)
-		newRec[0] = []byte(node.key)
-		newRec[1] = node.value
-		tombstone := node.status
+		newRec[0] = []byte(node.Key)
+		newRec[1] = node.Value
+		tombstone := node.Status
 		tombstone1 := make([]byte, 1, 1)
 		tombstone1[0] = byte(tombstone)
 		// binary.LittleEndian.PutUint16(tombstone1, uint16(tombstone))
 		newRec[2] = tombstone1
-		timestamp := node.timestamp
+		timestamp := node.Timestamp
 		timestamp1 := make([]byte, 8, 8)
 		binary.LittleEndian.PutUint64(timestamp1, uint64(timestamp))
 		newRec[3] = timestamp1

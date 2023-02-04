@@ -45,7 +45,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	if num == 1 {
 		for len(value) == 0 {
 			fmt.Print("Unesite vrednost -> ")
-			fmt.Scanln(&value)
+			fmt.Scan(&value)
 			elem = structures.Element{Key: key, Elem: value, Type: ""}
 		}
 	} else if num == 2 { // ne radi
