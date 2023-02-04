@@ -128,7 +128,7 @@ func main() {
 		fmt.Println("|                       Za izlaz ukucajte 'x' |")
 		fmt.Println("-----------------------------------------------")
 		fmt.Print("\nIzaberite opciju -> ")
-		fmt.Scanln(&a)
+		fmt.Scan(&a)
 		// a = "4"
 
 		if tocken_bucket(int(TokenTime), int(TokenNumber), TokenList) {
