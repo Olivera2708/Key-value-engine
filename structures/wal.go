@@ -114,8 +114,6 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) uint64 {
 	val_size := make([]byte, VALUE_SIZE_SIZE)
 	binary.LittleEndian.PutUint64(val_size, val_len)
 
-	//time := time.Now().Format("DD-MM-YYYY HH:mm")
-	//timestamp := []byte(time)
 	t := time.Now().Unix()
 	timestamp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(timestamp, uint64(t))
@@ -130,7 +128,6 @@ func (wal *WAL) Add(key string, valb []byte, flag byte) uint64 {
 	record = append(record, valb...)
 
 	crc := CRC32(record)
-	// fmt.Println(crc)
 	data := make([]byte, CRC_SIZE)
 	binary.LittleEndian.PutUint32(data, uint32(crc))
 	data = append(data, record...) // kreiran je zapis
@@ -207,33 +204,20 @@ func (wal *WAL) ReadAll(mem Memtable, generation int, sstype int) {
 				log.Fatal(err_kraj)
 			}
 			crc := binary.LittleEndian.Uint32(crcb)
-			// fmt.Println("CRC: ", crc)
 			file.Read(time2)
 			time1 := binary.LittleEndian.Uint64(time2)
-			// fmt.Println(time.Unix(int64(time1), 0))
 			file.Read(tomb)
-			// fmt.Println(tomb)
 			file.Read(ksb)
 			key_size := binary.LittleEndian.Uint64(ksb)
-			// fmt.Println(key_size)
 			file.Read(vsb)
 			val_size := binary.LittleEndian.Uint64(vsb)
-			// fmt.Println(val_size)
 
 			key := make([]byte, key_size)
 			file.Read(key)
 			val := make([]byte, val_size)
 			file.Read(val)
 
-			// fmt.Println("Key: ", string(key))
-			// fmt.Println("Val: ", string(val))
-			// fmt.Println()
-
 			mem.Add(string(key), val, int(tomb[0]), time1)
-			//mem.Flush(&generation, sstype)
-			//provera crc
-			// data := make([]byte, TIMESTAMP_SIZE+TOMBSTONE_SIZE+
-			// 	KEY_SIZE_SIZE+VALUE_SIZE_SIZE+key_size+val_size)
 
 			data := append(time2, tomb...)
 			data = append(data, ksb...)
@@ -241,8 +225,6 @@ func (wal *WAL) ReadAll(mem Memtable, generation int, sstype int) {
 			data = append(data, key...)
 			data = append(data, val...)
 
-			// fmt.Println(crc)
-			// fmt.Println(CRC32(data))
 			if crc != CRC32(data) {
 				fmt.Println("Korumpirani podaci")
 			}
@@ -258,7 +240,6 @@ func (wal *WAL) Flush() {
 		j := 0
 		for i := n - wal.Low_water_mark + 1; i < n; i++ {
 			new = append(new, wal.segments[i])
-			// new[j] = wal.segments[i]
 			j++
 		}
 

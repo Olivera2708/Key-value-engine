@@ -152,14 +152,7 @@ func main() {
 			case "5":
 				features.RANGE_SCAN(mem, int(SSTableType), int(summaryBlockingFactor))
 			case "6":
-				// if generation > 1 {
 				generation = features.LSM(int(SSTableType), int(summaryBlockingFactor))
-				// }
-
-			case "test":
-				//fmt.Println(LSMAlgorithm)
-				//fmt.Println(LSMTreeLevel)
-				fmt.Println(SSTableType)
 			default:
 				fmt.Println("Pogrešan unos")
 			}

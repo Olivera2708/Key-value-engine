@@ -325,19 +325,6 @@ func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uin
 		for j := mid; j < n; j++ {
 			node.insertAt(j, "", nil, 0, 0)
 		}
-		//node ostaje i-to dete
-		//podeli decu cvora koji se deli na node i sibling <<<< ?
-		/*
-			c = 0
-			for j := mid + 1; j < n+1; j++ {
-				if node.children[j] != nil {
-					sibling.children[c] = node.children[j]
-					sibling.children[c].parent = sibling
-					node.children[j] = nil
-					c++
-				}
-			}
-		*/
 		AdoptionService(node, sibling, all_keys[mid])
 
 	} else { //roditelj je maksimalno popunjen, poziva se i za njega, pa se u povratku namestaju deca dole
@@ -357,7 +344,6 @@ func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uin
 				}
 			}
 		}
-		//ko je brat?
 		var sibling *TreeNode = nil
 		c := 0
 		for ; c < n+1; c++ {
@@ -383,19 +369,6 @@ func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uin
 		for j := mid; j < n; j++ {
 			node.insertAt(j, "", nil, 0, 0)
 		}
-
-		//podeli decu <<<<<<
-		/*
-			c = 0
-			for j := mid + 1; j < n+1; j++ {
-				if node.children[j] != nil {
-					sibling.children[c] = node.children[j]
-					sibling.children[c].parent = sibling
-					node.children[j] = nil
-					c++
-				}
-			}
-		*/
 		AdoptionService(node, sibling, all_keys[mid])
 
 		return
@@ -470,7 +443,7 @@ func (btree *BTree) FindAllPrefix(prefix string, j *int) string {
 	for i := *j + 1; i < len(data); i++ {
 		k := string(data[i][0])
 
-		if strings.HasPrefix(k, prefix) { //data[i][2][0] == 0 &&
+		if strings.HasPrefix(k, prefix) {
 			*j++
 			return k
 		}
@@ -514,7 +487,7 @@ func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string, j *
 	for i := *j + 1; i < len(data); i++ {
 		k := string(data[i][0])
 
-		if min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] { // data[i][2][0] == 0 &&
+		if min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
 			(*j)++
 			return k
 		}

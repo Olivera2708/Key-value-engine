@@ -46,8 +46,6 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 		positions = append(positions, currentPos)
 
 		timeStamp := data[i][3]
-		//timeStamp1 := make([]byte, 8, 8)
-		//binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
 
 		tombstone := data[i][2]
 
@@ -167,7 +165,7 @@ func CreateSingleSSTable(data [][][]byte, generation int, summaryBlockingFactor 
 	fileWriter.Flush()
 	outFile.Seek(int64(currentPos), 0)
 
-	bf := CreateBloomFilter(uint(len(keys)), 2) //mozda p treba decimalno
+	bf := CreateBloomFilter(uint(len(keys)), 2)
 	for i := 0; i < len(keys); i++ {
 		bf.Add(strings.Split(keys[i], "-")[0])
 	}
@@ -362,22 +360,6 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			// if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
-			// 	file.Seek(-(int64(keyLenNum) + 16), 1)
-			// 	file.Read(position)
-			// 	pos := binary.LittleEndian.Uint64(position)
-
-			// 	path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
-
-			// 	return path1, pos1
-			// } else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
-			// 	file.Read(position)
-			// 	pos := binary.LittleEndian.Uint64(position)
-
-			// 	path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
-
-			// 	return path1, pos1
-			// }
 			file.Read(position)
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {

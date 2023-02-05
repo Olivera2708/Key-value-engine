@@ -27,7 +27,6 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 			return
 		}
 	}
-	fmt.Println("Nema mem")
 	found, elem := cache.Found(structures.Element{Key: key})
 	if found {
 		return_value = elem.Value.(structures.Element).Elem
@@ -38,14 +37,12 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 		WriteFound(new_key, return_value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 		return
 	}
-	fmt.Println("Nema cache")
 
 	found = bloomf.Query(key)
 	if !found {
 		fmt.Println("Ne postoji vrednost sa datim ključem")
 		return
 	}
-	fmt.Println("Nema bloom")
 
 	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
 		generation := 0
@@ -236,7 +233,6 @@ func HLLMenu(key string, value []byte) *structures.HLL {
 	return hll
 }
 
-// ovo sve mora da se sredi
 func SHMenu(key string, value []byte) *structures.SimHash {
 	sh := structures.DeserializeSimHash(value)
 	a := ""

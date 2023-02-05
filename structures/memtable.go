@@ -35,16 +35,6 @@ func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp uint
 	}
 }
 
-// func (memtable *Memtable) Update(key string, value []byte, stat int) bool {
-// 	element := memtable.data.Update(key, value, stat)
-// 	return element
-// }
-
-// func (memtable *Memtable) Remove(key string) bool {
-// 	element := memtable.data.Delete(key)
-// 	return element
-// }
-
 func (Memtable *Memtable) FindAllPrefix(prefix string, j *int) string {
 	return Memtable.Data.FindAllPrefix(prefix, j)
 }
@@ -73,7 +63,7 @@ func (memtable *Memtable) Flush(generation *int, sstableType int, percentage int
 	if float64(memtable.capacity)/float64(memtable.max_capacity)*100 >= float64(percentage) { //ovde treba videti odakle se uzima granica popunjenosti
 		data := memtable.Data.GetData()
 
-		//dodati da broji za generaciju
+		//odredi da broji za generaciju
 		generation := 0
 		for j := 0; true; j++ {
 			var file *os.File
@@ -234,8 +224,6 @@ func LeveledMultiMem(memtable *Memtable, summaryBlockingFactor int) {
 			if newMin == -1 && memCounter == len(memData) {
 				break
 			}
-
-			// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
 
 			for i := newMin + 1; i < len(files); i++ {
 				if mapa[i] {
@@ -498,8 +486,6 @@ func LeveledSingleMem(memtable *Memtable, summaryBlockingFactor int) {
 			if newMin == -1 && memCounter == len(memData) {
 				break
 			}
-
-			// ako je newMin = len - 1 ? Trebalo bi da samo ne uđe u uslovu i < len(files)
 
 			for i := newMin + 1; i < len(files); i++ {
 				if mapa[i] {

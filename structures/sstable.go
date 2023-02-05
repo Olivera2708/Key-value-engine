@@ -43,8 +43,6 @@ func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *
 		positions = append(positions, currentPos)
 
 		timeStamp := data[i][3]
-		//timeStamp1 := make([]byte, 8, 8)
-		//binary.LittleEndian.PutUint64(timeStamp1, timeStamp)
 
 		tombstone := data[i][2]
 
@@ -81,7 +79,7 @@ func CreateSSTable(data [][][]byte, generation int, summaryBlockingFactor int) *
 		currentPos += 29 + int(len(key1)) + int(len(value))
 	}
 
-	bf := CreateBloomFilter(uint(len(keys)), 0.1) //mozda p treba decimalno
+	bf := CreateBloomFilter(uint(len(keys)), 0.1)
 	for i := 0; i < len(keys); i++ {
 		bf.Add(strings.Split(keys[i], "-")[0])
 	}
@@ -244,7 +242,6 @@ func ReadSummary(path string, key string) (bool, []byte, string) {
 				found, value, new_key := ReadIndex(path, key, pos)
 				return found, value, new_key
 			}
-			// file.Seek(8, 1)
 			file.Read(position)
 		}
 	}
@@ -449,9 +446,6 @@ func FindAllPrefixRangeMultiple(path string, min_prefix string, max_prefix strin
 }
 
 func FindPrefixSummaryRangeMultiple(path string, min_prefix string, max_prefix string) (string, uint64) {
-	// return_data := [][]byte{}
-	// all_keys := []string{}
-
 	startLen := make([]byte, 8)
 	endLen := make([]byte, 8)
 	file, err := os.OpenFile(path+"-summary.db", os.O_RDWR, 0666)
@@ -479,15 +473,11 @@ func FindPrefixSummaryRangeMultiple(path string, min_prefix string, max_prefix s
 		pos := binary.LittleEndian.Uint64(position)
 		path1, pos1 := FindPrefixIndexRangeMultiple(path, min_prefix, max_prefix, pos)
 		return path1, pos1
-		// return_data = append(return_data, values...)
-		// all_keys = append(all_keys, keys...)
 	}
 	return "", 0
 }
 
 func FindPrefixIndexRangeMultiple(path string, min_prefix string, max_prefix string, position uint64) (string, uint64) {
-	// return_data := [][]byte{}
-	// all_keys := []string{}
 	file, err := os.OpenFile(path+"-index.db", os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -540,8 +530,6 @@ func FindPrefixSSTableRangeMultiple(min_prefix string, max_prefix string, positi
 		file.Read(value)
 		if strings.Split(string(key1), "-")[0] <= max_prefix && strings.Split(string(key1), "-")[0] >= min_prefix {
 			return string(key1), value, timestamp, int(tombstone[0])
-			// all_keys = append(all_keys, string(key1))
-			// all_data = append(all_data, value)
 		} else if strings.Split(string(key1), "-")[0] > max_prefix {
 			break
 		}

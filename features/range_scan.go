@@ -59,9 +59,6 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					paths = append(paths, path)
 					positions1 = append(positions1, position)
 				}
-				// all_data = append(all_data, values...)
-				// all_keys = append(all_keys, keys...)
-				// all_data = append(all_data, structures.FindAllPrefixRangeMultiple("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), min_prefix, max_prefix)...)
 			} else {
 				_, err := os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", os.O_RDONLY, 0666)
 				if os.IsNotExist(err) {
@@ -72,16 +69,9 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					paths = append(paths, path)
 					positions1 = append(positions1, position)
 				}
-				// all_data = append(all_data, structures.FindAllPrefixRangeSingle("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", min_prefix, max_prefix, summaryBlockingFactor)...)
 			}
 		}
 	}
-
-	// if len(all_data) == 0 {
-	// 	fmt.Println("Nema rezultata")
-	// } else {
-	// 	writerPrefix(all_keys, all_data)
-	// }
 
 	currentPage := -1
 
@@ -96,7 +86,6 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 
 		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
 		fmt.Scan(&pageNumber)
-		// pageNumber = "1"
 
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {
@@ -105,14 +94,14 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 			}
 			if pageNumber == "p" && currentPage > 1 {
 				currentPage--
-			} else if pageNumber == "s" && currentPage > 0 { // && currentPage*global.ResultsNumber < len(all_data)
+			} else if pageNumber == "s" && currentPage > 0 {
 				currentPage++
 			} else {
 				fmt.Println("Trazena strana ne postoji")
 				continue
 			}
 
-		} else if num < 1 { // || (num-1)*global.ResultsNumber >= len(all_data)
+		} else if num < 1 {
 			fmt.Println("Neispravan broj strana")
 			continue
 		} else {

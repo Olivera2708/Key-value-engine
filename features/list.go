@@ -33,7 +33,6 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 	btree_ind := -1
 	mem_key := mem.FindAllPrefix(prefix, &btree_ind)
 	btree_ind--
-	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
 	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
@@ -74,7 +73,6 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 
 		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
 		fmt.Scan(&pageNumber)
-		// pageNumber = "1"
 
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {
@@ -83,14 +81,14 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 			}
 			if pageNumber == "p" && currentPage > 1 {
 				currentPage--
-			} else if pageNumber == "s" && currentPage > 0 { // && currentPage*global.ResultsNumber < len(all_data)
+			} else if pageNumber == "s" && currentPage > 0 {
 				currentPage++
 			} else {
 				fmt.Println("Trazena strana ne postoji")
 				continue
 			}
 
-		} else if num < 1 { // || (num-1)*global.ResultsNumber >= len(all_data)
+		} else if num < 1 {
 			fmt.Println("Neispravan broj strana")
 			continue
 		} else {
@@ -125,7 +123,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 					best_val = node.Value
 					bestTime = node.Timestamp
 					bestStat = node.Status
-					isMem = true //sta ako u mem nema prefiksa???
+					isMem = true
 				}
 			} else {
 				best = mem.Data.FindAllPrefix(prefix, &btree_ind)

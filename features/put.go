@@ -39,7 +39,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 		}
 	}
 
-	bloomf.Add(key) //bitno dodati pre nastavka
+	bloomf.Add(key)
 	var value []byte
 
 	elem := structures.Element{}
@@ -49,22 +49,22 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 			fmt.Scan(&value)
 			elem = structures.Element{Key: key, Elem: value, Type: ""}
 		}
-	} else if num == 2 { // ne radi
+	} else if num == 2 {
 		hll := structures.CreateHLL(uint8(HLLp))
 		key += "-hll"
 		value = hll.SerializeHLL()
 		elem = structures.Element{Key: key, Elem: value, Type: "hll"}
-	} else if num == 3 { //radi
+	} else if num == 3 {
 		cms := structures.CreateCMS(CMSp, CMSd)
 		key += "-cms"
 		value = cms.SerializeCMS()
 		elem = structures.Element{Key: key, Elem: value, Type: "cms"}
-	} else if num == 4 { //radi
+	} else if num == 4 {
 		bloomf := structures.CreateBloomFilter(global.BFn, global.BFp)
 		key += "-bloom"
 		value = bloomf.SerializeBloom()
 		elem = structures.Element{Key: key, Elem: value, Type: "bloom"}
-	} else { //ne radi i malo nema smisla
+	} else {
 		simHash := structures.CreateSimHash()
 		key += "-simHash"
 		value = simHash.SerializeSimHash()
@@ -72,7 +72,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 	}
 
 	timestamp := wal.Add(key, value, 0)
-	mem.Add(key, value, 0, timestamp) //0 znaci da je aktivan
+	mem.Add(key, value, 0, timestamp)
 
 	cache.Add(elem)
 

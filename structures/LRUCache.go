@@ -38,11 +38,6 @@ func (lruc *LRUCache) Found(elem Element) (bool, *list.Element) {
 
 func (lruc *LRUCache) Add(elem Element) {
 	elem.Key = strings.Split(elem.Key, "-")[0]
-	// if strings.Contains(elem.Key, "-") {
-	// 	elem.Type = strings.Split(elem.Key, "-")[1]
-	// } else {
-	// 	elem.Type = ""
-	// }
 	found, el := lruc.Found(elem)
 	if found {
 		lruc.Move(el, elem.Elem, elem.Type)
@@ -74,12 +69,3 @@ func (lruc *LRUCache) Move(elem *list.Element, val []byte, types string) {
 	elem.Value = e
 	lruc.lista.MoveToFront(elem)
 }
-
-// func (lruc *LRUCache) Print(lista *list.List) {
-// 	fmt.Println()
-// 	test := lista.Front()
-// 	for i := 0; i < lista.Len(); i++ {
-// 		fmt.Println(test.Value.(Element).Key + ": " + string(test.Value.(Element).Element))
-// 		test = test.Next()
-// 	}
-// }
