@@ -6,6 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"hash/crc32"
+	"io"
+	"log"
 	"math"
 	"os"
 	"strings"
@@ -540,7 +543,246 @@ func LeveledSingleFlush(summaryBlockingFactor int) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func LeveledMulti(memtable *structures.Memtable, summaryBlockingFactor int) {
+func LeveledMultiMem(memtable *structures.Memtable, summaryBlockingFactor int) {
+	memData := memtable.Data.GetData()
+	startIndex := memData[0][0]
+	endIndex := memData[len(memData)-1][0]
+
+	files := make([]os.File, 0)
+	for j := 0; true; j++ {
+		file, err := os.Open("data/sstables/usertable-0-" + fmt.Sprint(j) + "-summary.db")
+		if err != nil {
+			break
+		}
+
+		len1Bytes := make([]byte, 8, 8)
+		len2Bytes := make([]byte, 8, 8)
+		file.Read(len1Bytes)
+		len1 := binary.LittleEndian.Uint64(len1Bytes)
+		key1 := make([]byte, int(len1), int(len1))
+		file.Read(key1)
+
+		file.Read(len2Bytes)
+		len2 := binary.LittleEndian.Uint64(len2Bytes)
+		key2 := make([]byte, int(len2), int(len2))
+		file.Read(key2)
+		file.Close()
+
+		if !((strings.Split(string(startIndex), "-")[0] < strings.Split(string(key1), "-")[0]) || (strings.Split(string(startIndex), "-")[0] > strings.Split(string(key2), "-")[0]) && (strings.Split(string(endIndex), "-")[0] < strings.Split(string(key1), "-")[0]) || (strings.Split(string(endIndex), "-")[0] > strings.Split(string(key2), "-")[0])) {
+			file, _ = os.Open("data/sstables/usertable-0-" + fmt.Sprint(j) + "-data.db")
+			files = append(files, *file)
+		}
+
+	}
+
+	newGen := 0
+	for i := 0; true; i++ {
+		file, err := os.OpenFile("data/sstables/usertable-0-"+fmt.Sprint(i)+"-data.db", os.O_WRONLY, 0666)
+		if os.IsNotExist(err) {
+			newGen = i
+			break
+		}
+		file.Close()
+	}
+	newFile, _ := os.Create("data/sstables/usertable-0-" + fmt.Sprint(newGen) + "-data.db")
+
+	// var indices []int
+
+	// var bestTime uint64
+
+	memDataPointer := 0
+	best := ""
+	best_val := []byte{}
+	best_crc := []byte{}
+	best_timestamp := []byte{}
+	best_tombstone := []byte{}
+	keysIndex := []string{}
+	values := [][]byte{}
+	currentPos := 0
+	positions := []int{}
+	for i := 0; true; i++ {
+		isMem := true
+		// if global.MemTableDataType == 1 {
+		// 	if node != nil && strings.HasPrefix(node.Key, prefix) {
+		// 		best = node.Key
+		// 		best_val = node.Value
+		// 		bestTime = node.Timestamp
+		// 		isMem = true //sta ako u mem nema prefiksa???
+		// 	}
+		// } else {
+		// 	best = mem.Data.FindAllPrefix(prefix, btree_ind)
+		// 	if best != "" {
+		// 		best_val, bestTime = mem.Data.FindTreeNode(best)
+		// 		isMem = true
+		// 	} else {
+		// 		isMem = false
+		// 	}
+		// }
+		best = string(memData[memDataPointer][0])
+		best_val = memData[memDataPointer][1]
+		best_tombstone = memData[memDataPointer][2]
+		best_timestamp = memData[memDataPointer][3]
+
+		// keylenBytes := make([]byte, 8, 8)
+		// vallenBytes := make([]byte, 8, 8)
+		// binary.LittleEndian.PutUint64(keylenBytes, uint64(len(best)))
+		// binary.LittleEndian.PutUint64(vallenBytes, uint64(len(best_val)))
+
+		// record := append(best_timestamp, best_tombstone...)
+		// record = append(record, keylenBytes...)
+		// record = append(record, vallenBytes...)
+		// record = append(record, []byte(best)...)
+		// record = append(record, best_val...)
+
+		// crc := crc32.ChecksumIEEE(record)
+		// best_crc = make([]byte, 4, 4)
+
+		// binary.LittleEndian.PutUint32(best_crc, crc)
+		offsets := []int64{}
+		keys := []string{}
+		counter := 0
+		for j := 0; j < len(files); j++ {
+
+			//var key string
+			//var val []byte
+			//var timeS []byte
+			offset, err := files[j].Seek(0, io.SeekCurrent)
+			rec, empty := structures.ReadNextRecord(&files[j])
+			if empty {
+				offset, _ = files[j].Seek(0, io.SeekCurrent)
+				offsets = append(offsets, offset)
+				keys = append(keys, "")
+			} else {
+				offsets = append(offsets, offset)
+				keys = append(keys, string(rec["key"]))
+			}
+
+			//if sstableType == 2 {
+			//key, val, timeS = structures.FindPrefixSSTableMultiple(prefix, positions[j], &files[j])
+			// } else {
+			// 	key, val, timeS = structures.FindPrefixSSTableSingle(prefix, positions[j], &files[j])
+			// }
+
+			if err != nil {
+				log.Fatal(err)
+			}
+			if empty {
+				counter++
+				continue
+			}
+			//timestamp := binary.LittleEndian.Uint64(timeS)
+			if strings.Split(string(rec["key"]), "-")[0] < strings.Split(best, "-")[0] || strings.Split(best, "-")[0] == "" {
+				best = string(rec["key"])
+				best_val = rec["value"]
+				best_tombstone = rec["tombstone"]
+				best_timestamp = rec["timestamp"]
+
+				isMem = false
+			} else if strings.Split(string(rec["key"]), "-")[0] == strings.Split(best, "-")[0] {
+
+				best_timestampInt := binary.LittleEndian.Uint64(best_timestamp)
+				rec_timestampInt := binary.LittleEndian.Uint64(rec["timestamp"])
+				if best_timestampInt < rec_timestampInt {
+					best = string(rec["key"])
+
+					best_tombstone = rec["tombstone"]
+					best_val = rec["value"]
+					best_timestamp = rec["timestamp"]
+				}
+			}
+		}
+		if counter == len(files) && !isMem {
+			break
+		}
+		// if global.MemTableDataType == 1 {
+		// 	if isMem && node != nil {
+		// 		node = node.Next[0]
+		// 		if node == nil {
+		// 			isMem = false
+		// 		}
+		// 	}
+		// } else {
+		// 	if isMem {
+		// 		btree_ind++
+		// 	}
+		// }
+		if isMem {
+			memDataPointer++
+		}
+		for k := 0; k < len(files); k++ {
+			if strings.Split(best, "-")[0] == strings.Split(string(keys[k]), "-")[0] {
+				files[k].Seek(int64(offsets[k]), 0)
+			}
+
+		}
+		// if i >= n*(currentPage-1) && i < n*(currentPage) {
+		// 	all_keys = append(all_keys, best)
+		// 	all_data = append(all_data, best_val)
+		// }
+
+		keylenBytes := make([]byte, 8, 8)
+		vallenBytes := make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(keylenBytes, uint64(len(best)))
+		binary.LittleEndian.PutUint64(vallenBytes, uint64(len(best_val)))
+
+		record := append(best_timestamp, best_tombstone...)
+		record = append(record, keylenBytes...)
+		record = append(record, vallenBytes...)
+		record = append(record, []byte(best)...)
+		record = append(record, best_val...)
+
+		crc := crc32.ChecksumIEEE(record)
+		best_crc = make([]byte, 4, 4)
+
+		binary.LittleEndian.PutUint32(best_crc, crc)
+		if best_tombstone[0] == 0 {
+			positions = append(positions, currentPos)
+			newFile.Write(best_crc)
+			newFile.Write(best_timestamp)
+			newFile.Write(best_tombstone)
+			newFile.Write(keylenBytes)
+			newFile.Write(vallenBytes)
+			newFile.Write([]byte(best))
+			newFile.Write(best_val)
+			keysIndex = append(keysIndex, best)
+			values = append(values, best_val)
+			currentPos += 29 + len(best) + len(best_val)
+
+		}
+
+		best = ""
+
+	}
+
+	for j := 0; j < len(files); j++ {
+		files[j].Close()
+	}
+	newFile.Close()
+	structures.CreateIndex(keysIndex, positions, "data/sstables/usertable-0-"+fmt.Sprint(newGen), summaryBlockingFactor)
+
+	bf := structures.CreateBloomFilter(uint(len(keysIndex)), 2)
+	for i := 0; i < len(keysIndex); i++ {
+		bf.Add(keysIndex[i])
+	}
+	bf.Write("data/sstables/usertable-0-" + fmt.Sprint(newGen))
+	structures.CreateTOC("data/sstables/usertable-0-" + fmt.Sprint(newGen))
+
+	merkle := structures.CreateMerkleTree(values)
+	structures.WriteMerkleInFile(merkle, "data/sstables/usertable-0-"+fmt.Sprint(newGen))
+
+	for f := 0; f < len(files); f++ {
+		path := files[f].Name()
+		path = path[:len(path)-8]
+		os.Remove(path + "-data.db")
+		os.Remove(path + "-index.db")
+		os.Remove(path + "-summary.db")
+		os.Remove(path + "-filter.db")
+		os.Remove(path + "-TOC.txt")
+		os.Remove(path + "-Metadata.txt")
+
+	}
+
+	// linearno mapiranje na 0-n
 
 }
 
