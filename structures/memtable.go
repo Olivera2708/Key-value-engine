@@ -41,11 +41,11 @@ func (memtable *Memtable) Add(key string, value []byte, stat int, timestamp uint
 // 	return element
 // }
 
-func (Memtable *Memtable) FindAllPrefix(prefix string, j int) string {
+func (Memtable *Memtable) FindAllPrefix(prefix string, j *int) string {
 	return Memtable.Data.FindAllPrefix(prefix, j)
 }
 
-func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string, j int) string {
+func (Memtable *Memtable) FindAllPrefixRange(min_prefix string, max_prefix string, j *int) string {
 	return Memtable.Data.FindAllPrefixRange(min_prefix, max_prefix, j)
 }
 

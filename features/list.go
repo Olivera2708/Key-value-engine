@@ -31,7 +31,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 
 	//u memtable
 	btree_ind := -1
-	mem_key := mem.FindAllPrefix(prefix, btree_ind)
+	mem_key := mem.FindAllPrefix(prefix, &btree_ind)
 	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
@@ -126,7 +126,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 					isMem = true //sta ako u mem nema prefiksa???
 				}
 			} else {
-				best = mem.Data.FindAllPrefix(prefix, btree_ind)
+				best = mem.Data.FindAllPrefix(prefix, &btree_ind)
 				if best != "" {
 					best_val, bestTime, bestStat = mem.Data.FindTreeNode(best)
 					isMem = true
@@ -191,9 +191,9 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 			for k := 0; k < len(indices); k++ {
 				positions[indices[k]] = uint64(offsets[k])
 			}
-
 			if best == "" || bestStat == 1 {
 				i--
+				best = ""
 				continue
 			}
 
