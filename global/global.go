@@ -7,3 +7,5 @@ var LSMTreeLevel int
 var LSMAlgorithm int
 var LSMMinimum int
 var BTreeN int
+var BFn uint
+var BFp float64

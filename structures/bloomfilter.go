@@ -1,6 +1,7 @@
 package structures
 
 import (
+	"Projekat/global"
 	"bytes"
 	"crypto/md5"
 	"encoding/binary"
@@ -146,7 +147,13 @@ func (bf *BloomF) WriteGlobal() {
 }
 
 func ReadAll() *BloomF {
-	file, err := os.OpenFile("data/bloomf.db", os.O_CREATE|os.O_RDWR, 0666)
+	file, err := os.OpenFile("data/bloomf.db", os.O_RDWR, 0666)
+	if err != nil {
+		bloomf := CreateBloomFilter(global.BFn, global.BFp)
+		file, _ := os.OpenFile("data/bloomf.db", os.O_CREATE, 0666)
+		file.Close()
+		return bloomf
+	}
 	defer file.Close()
 
 	decoder := gob.NewDecoder(file)
@@ -157,6 +164,5 @@ func ReadAll() *BloomF {
 			break
 		}
 	}
-
 	return srs
 }

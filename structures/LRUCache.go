@@ -45,7 +45,7 @@ func (lruc *LRUCache) Add(elem Element) {
 	// }
 	found, el := lruc.Found(elem)
 	if found {
-		lruc.Move(el, elem.Elem)
+		lruc.Move(el, elem.Elem, elem.Type)
 	} else {
 		e := lruc.lista.PushFront(elem)
 		lruc.mapa[elem.Key] = e
@@ -67,9 +67,10 @@ func (lruc *LRUCache) Delete(el Element) bool {
 	return found
 }
 
-func (lruc *LRUCache) Move(elem *list.Element, val []byte) {
+func (lruc *LRUCache) Move(elem *list.Element, val []byte, types string) {
 	e := elem.Value.(Element)
 	e.Elem = val
+	e.Type = types
 	elem.Value = e
 	lruc.lista.MoveToFront(elem)
 }

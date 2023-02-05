@@ -1,12 +1,13 @@
 package features
 
 import (
+	"Projekat/global"
 	"Projekat/structures"
 	"fmt"
 	"strings"
 )
 
-func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int, percentage int, summaryBlockingFactor int, HLLp int, CMSp float64, CMSd float64, BFn int, BFp float64) {
+func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCache, generation *int, bloomf structures.BloomF, sstableType int, percentage int, summaryBlockingFactor int, HLLp int, CMSp float64, CMSd float64) {
 
 	key := ""
 	for {
@@ -59,7 +60,7 @@ func PUT(wal *structures.WAL, mem *structures.Memtable, cache *structures.LRUCac
 		value = cms.SerializeCMS()
 		elem = structures.Element{Key: key, Elem: value, Type: "cms"}
 	} else if num == 4 { //radi
-		bloomf := structures.CreateBloomFilter(uint(BFn), BFp)
+		bloomf := structures.CreateBloomFilter(global.BFn, global.BFp)
 		key += "-bloom"
 		value = bloomf.SerializeBloom()
 		elem = structures.Element{Key: key, Elem: value, Type: "bloom"}

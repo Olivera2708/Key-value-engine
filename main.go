@@ -51,11 +51,11 @@ func main() {
 	TokenTime := 10.0
 	TokenNumber := 5.0
 	global.ResultsNumber = 5
-	HLLp := 8.0  // broj vodecih bajtova
-	CMSp := 0.1  // preciznost
-	CMSd := 0.01 // tacnost
-	BFn := 20.0  // broj elemenata
-	BFp := 0.1   //preciznost
+	HLLp := 8.0      // broj vodecih bajtova
+	CMSp := 0.1      // preciznost
+	CMSd := 0.01     // tacnost
+	global.BFn = 20  // broj elemenata
+	global.BFp = 0.1 //preciznost
 	global.BTreeN = 2
 	configFile, err := ioutil.ReadFile("config/config.json")
 	if err == nil {
@@ -83,8 +83,8 @@ func main() {
 		HLLp = payload["HLL"]["p"]
 		CMSp = float64(payload["CMS"]["p"])
 		CMSd = float64(payload["CMS"]["d"])
-		BFn = payload["BloomFilter"]["n"]
-		BFp = float64(payload["BloomFilter"]["p"])
+		global.BFn = uint(payload["BloomFilter"]["n"])
+		global.BFp = float64(payload["BloomFilter"]["p"])
 		global.BTreeN = int(payload["BTree"]["n"])
 	}
 
@@ -141,7 +141,7 @@ func main() {
 			case "x":
 				return
 			case "1":
-				features.PUT(wal, mem, cache, &generation, *bloom, int(SSTableType), int(memTableFlush), int(summaryBlockingFactor), int(HLLp), CMSp, CMSd, int(BFn), BFp)
+				features.PUT(wal, mem, cache, &generation, *bloom, int(SSTableType), int(memTableFlush), int(summaryBlockingFactor), int(HLLp), CMSp, CMSd)
 			case "2":
 				features.GET(mem, cache, *bloom, int(SSTableType), int(summaryBlockingFactor), int(generation), wal, int(memTableFlush))
 			case "3":
