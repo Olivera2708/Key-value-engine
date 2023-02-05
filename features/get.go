@@ -18,8 +18,8 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	}
 	found, value, new_key := mem.Find(key)
 	if found {
-		cache.Add(structures.Element{Key: new_key, Elem: value})
-		if value != nil {
+		if len(value) > 0 {
+			cache.Add(structures.Element{Key: new_key, Elem: value})
 			WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 			return
 		} else {
@@ -48,16 +48,36 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 	fmt.Println("Nema bloom")
 
 	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
-		for i := 0; true; i++ {
+		generation := 0
+		for j := 0; true; j++ {
+			var file *os.File
+			var err error
+			if sstableType == 2 {
+				file, err = os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+			} else {
+				file, err = os.OpenFile("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(j)+"-data.db", os.O_RDONLY, 0666)
+			}
+
+			if os.IsNotExist(err) {
+				break
+			}
+			generation += 1
+			file.Close()
+		}
+		for i := generation - 1; i >= 0; i-- {
 			if sstableType == 2 {
 				_, err := os.OpenFile("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-summary.db", os.O_RDONLY, 0666)
 				if os.IsNotExist(err) {
 					break
 				}
 				found, value, new_key = structures.ReadSummary("data/sstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i), key)
-				if found {
+				if found && len(value) > 0 {
 					cache.Add(structures.Element{Key: key, Elem: value})
 					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
+					return
+				}
+				if found && len(value) == 0 {
+					fmt.Println("Ne postoji vrednost sa datim ključem")
 					return
 				}
 			} else {
@@ -66,9 +86,13 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 					break
 				}
 				found, value, new_key = structures.ReadSingleSummary("data/singlesstables/usertable-"+fmt.Sprint(lvl)+"-"+fmt.Sprint(i)+"-data.db", key, summaryBlockingFactor)
-				if found {
+				if found && len(value) > 0 {
 					cache.Add(structures.Element{Key: key, Elem: value})
 					WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
+					return
+				}
+				if found && len(value) == 0 {
+					fmt.Println("Ne postoji vrednost sa datim ključem")
 					return
 				}
 			}
