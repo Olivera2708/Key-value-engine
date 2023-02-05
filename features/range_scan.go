@@ -44,7 +44,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 	var positions1 []uint64
 	//u memtable
 	btree_ind := -1
-	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
+	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix, &btree_ind)
 
 	//sstable
 	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
@@ -96,7 +96,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 
 		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
 		fmt.Scan(&pageNumber)
-		// pageNumber = "2"
+		// pageNumber = "1"
 
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {
@@ -148,7 +148,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					isMem = true //sta ako u mem nema prefiksa???
 				}
 			} else {
-				best = mem.Data.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
+				best = mem.Data.FindAllPrefixRange(min_prefix, max_prefix, &btree_ind)
 				if best != "" {
 					best_val, bestTime, bestStat = mem.Data.FindTreeNode(best)
 					isMem = true
@@ -209,6 +209,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 				}
 			} else {
 				if isMem {
+					fmt.Println(btree_ind)
 					btree_ind++
 				}
 			}
@@ -219,6 +220,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 			// fmt.Println(best)
 			if best == "" || bestStat == 1 {
 				i--
+				best = ""
 				continue
 			}
 
