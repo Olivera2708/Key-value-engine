@@ -186,7 +186,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 					}
 				}
 			} else {
-				if !isMem {
+				if !isMem && btree_ind > -1 {
 					btree_ind--
 				}
 			}

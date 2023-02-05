@@ -362,22 +362,22 @@ func FindPrefixSummarySingle(path string, key string, summaryBlockingFactor int)
 			keyLenNum := binary.LittleEndian.Uint64(keyLen)
 			key1 := make([]byte, keyLenNum)
 			file.Read(key1)
-			if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
-				file.Seek(-(int64(keyLenNum) + 16), 1)
-				file.Read(position)
-				pos := binary.LittleEndian.Uint64(position)
+			// if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
+			// 	file.Seek(-(int64(keyLenNum) + 16), 1)
+			// 	file.Read(position)
+			// 	pos := binary.LittleEndian.Uint64(position)
 
-				path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
+			// 	path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
 
-				return path1, pos1
-			} else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
-				file.Read(position)
-				pos := binary.LittleEndian.Uint64(position)
+			// 	return path1, pos1
+			// } else if strings.Split(string(key1), "-")[0] == strings.Split(key, "-")[0] {
+			// 	file.Read(position)
+			// 	pos := binary.LittleEndian.Uint64(position)
 
-				path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
+			// 	path1, pos1 := FindAllPrefixIndexSingle(path, string(key), pos, file)
 
-				return path1, pos1
-			}
+			// 	return path1, pos1
+			// }
 			file.Read(position)
 
 			if i == int(math.Ceil(float64(length)/float64(summaryBlockingFactor)))-1 {

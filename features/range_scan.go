@@ -209,7 +209,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					}
 				}
 			} else {
-				if !isMem {
+				if !isMem && btree_ind > -1 {
 					btree_ind--
 				}
 			}
