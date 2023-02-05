@@ -18,13 +18,13 @@
     },
 
     "SSTable": {
-        "SSTableType" : 1,
+        "SSTableType" : 2,
         "summaryBlockingFactor" : 20
     },
 
     "LSMTree" : {
         "LSMTreeLevel" : 4,
-        "LSMAlgorithm" : 1,
+        "LSMAlgorithm" : 2,
         "LSMMinimum" : 2
     },
 
