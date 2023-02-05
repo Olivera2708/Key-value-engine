@@ -19,7 +19,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 	for {
 		fmt.Print("Unesite minimalni prefiks -> ")
 		fmt.Scan(&min_prefix)
-		// min_prefix = "a"
+		// min_prefix = "1"
 		if len(min_prefix) != 0 {
 			break
 		}
@@ -28,7 +28,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 	for {
 		fmt.Print("Unesite maksimalni prefiks -> ")
 		fmt.Scan(&max_prefix)
-		// max_prefix = "b"
+		// max_prefix = "9"
 		if min_prefix <= max_prefix && len(max_prefix) > 0 {
 			break
 		}
@@ -96,7 +96,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 
 		fmt.Print("Unesite broj strane, 'p' za prethodnu stranu, 's' za sledeću ili 'x' za izlazak -> ")
 		fmt.Scan(&pageNumber)
-		// pageNumber = "1"
+		// pageNumber = "2"
 
 		num, err := strconv.Atoi(pageNumber)
 		if err != nil {
@@ -133,12 +133,12 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 		}
 
 		var isMem bool
-		var indices []int
-		var offsets []int64
 		var bestTime uint64
 		var bestStat int
 
 		for i := 0; true; i++ {
+			var offsets []int64
+			var indices []int
 			if global.MemTableDataType == 1 {
 				if node != nil && (node.Key >= min_prefix && node.Key <= max_prefix) {
 					best = node.Key
@@ -215,6 +215,13 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 			for k := 0; k < len(indices); k++ {
 				positions[indices[k]] = uint64(offsets[k])
 			}
+
+			// fmt.Println(best)
+			if best == "" || bestStat == 1 {
+				i--
+				continue
+			}
+
 			if i >= n*(currentPage-1) && i < n*(currentPage) && bestStat == 0 {
 				all_keys = append(all_keys, best)
 				all_data = append(all_data, best_val)

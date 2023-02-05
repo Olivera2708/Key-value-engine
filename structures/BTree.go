@@ -470,7 +470,7 @@ func (btree *BTree) FindAllPrefix(prefix string, j int) string {
 	for i := j + 1; i < len(data); i++ {
 		k := string(data[i][0])
 
-		if data[i][2][0] == 0 && strings.HasPrefix(k, prefix) {
+		if strings.HasPrefix(k, prefix) { //data[i][2][0] == 0 &&
 			return k
 		}
 	}
@@ -514,7 +514,7 @@ func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string, j i
 	for i := j + 1; i < len(data); i++ {
 		k := string(data[i][0])
 
-		if data[i][2][0] == 0 && min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] {
+		if min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] { // data[i][2][0] == 0 &&
 			return k
 
 		}

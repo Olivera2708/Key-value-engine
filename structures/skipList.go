@@ -142,7 +142,7 @@ func (s *SkipList) FindAllPrefix(prefix string, j int) string {
 	// all_keys := []string{}
 
 	for node != nil {
-		if node.Status == 0 && strings.HasPrefix(strings.Split(node.Key, "-")[0], prefix) {
+		if strings.HasPrefix(strings.Split(node.Key, "-")[0], prefix) {
 			return node.Key
 			// all_keys = append(all_keys, node.key)
 			// return_data = append(return_data, node.value)
@@ -158,7 +158,7 @@ func (s *SkipList) FindAllPrefixRange(min_prefix string, max_prefix string, j in
 	node := s.head.Next[0]
 
 	for node != nil {
-		if node.Status == 0 && min_prefix <= strings.Split(node.Key, "-")[0] && max_prefix >= strings.Split(node.Key, "-")[0] {
+		if min_prefix <= strings.Split(node.Key, "-")[0] && max_prefix >= strings.Split(node.Key, "-")[0] { // node.Status == 0 &&
 			return node.Key
 			// all_keys = append(all_keys, node.Key)
 			// return_data = append(return_data, node.Value)

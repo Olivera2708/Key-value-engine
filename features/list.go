@@ -17,7 +17,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 
 	for {
 		fmt.Print("Unesite prefiks -> ")
-		// prefix = "a"
+		// prefix = "2"
 		fmt.Scan(&prefix)
 		if len(prefix) != 0 {
 			break
@@ -98,6 +98,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 
 		var best string
 		var best_val []byte
+		var bestStat int
 		//ispis
 		files := make([]os.File, 0)
 		for j := 0; j < len(paths); j++ {
@@ -113,6 +114,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 		var indices []int
 		var offsets []int64
 		var bestTime uint64
+		var tomb int
 
 		for i := 0; true; i++ {
 			if global.MemTableDataType == 1 {
@@ -120,12 +122,13 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 					best = node.Key
 					best_val = node.Value
 					bestTime = node.Timestamp
+					bestStat = node.Status
 					isMem = true //sta ako u mem nema prefiksa???
 				}
 			} else {
 				best = mem.Data.FindAllPrefix(prefix, btree_ind)
 				if best != "" {
-					best_val, bestTime = mem.Data.FindTreeNode(best)
+					best_val, bestTime, bestStat = mem.Data.FindTreeNode(best)
 					isMem = true
 				} else {
 					isMem = false
@@ -137,9 +140,9 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 				var val []byte
 				var timeS []byte
 				if sstableType == 2 {
-					key, val, timeS = structures.FindPrefixSSTableMultiple(prefix, positions[j], &files[j])
+					key, val, timeS, tomb = structures.FindPrefixSSTableMultiple(prefix, positions[j], &files[j])
 				} else {
-					key, val, timeS = structures.FindPrefixSSTableSingle(prefix, positions[j], &files[j])
+					key, val, timeS, tomb = structures.FindPrefixSSTableSingle(prefix, positions[j], &files[j])
 				}
 				offset, err := files[j].Seek(0, io.SeekCurrent)
 				if err != nil {
@@ -153,6 +156,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 				if strings.Split(key, "-")[0] < strings.Split(best, "-")[0] || strings.Split(best, "-")[0] == "" {
 					best = key
 					best_val = val
+					bestStat = tomb
 					indices = make([]int, 1)
 					offsets = make([]int64, 1)
 					indices[0] = j
@@ -165,6 +169,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 						best = key
 						best_val = val
 						bestTime = timestamp
+						bestStat = tomb
 					}
 				}
 			}
@@ -186,7 +191,13 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 			for k := 0; k < len(indices); k++ {
 				positions[indices[k]] = uint64(offsets[k])
 			}
-			if i >= n*(currentPage-1) && i < n*(currentPage) {
+
+			if best == "" || bestStat == 1 {
+				i--
+				continue
+			}
+
+			if i >= n*(currentPage-1) && i < n*(currentPage) && bestStat == 0 {
 				all_keys = append(all_keys, best)
 				all_data = append(all_data, best_val)
 			}
