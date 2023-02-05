@@ -412,23 +412,24 @@ func FindAllPrefixIndexSingle(path string, prefix string, position uint64, file 
 	return "", 0
 }
 
-func FindPrefixSSTableSingle(key string, position uint64, file *os.File) (string, []byte, []byte) {
+func FindPrefixSSTableSingle(key string, position uint64, file *os.File) (string, []byte, []byte, int) {
 	file.Seek(8, 0)
 	endBytes := make([]byte, 8)
 	file.Read(endBytes)
 	end := binary.LittleEndian.Uint64(endBytes)
 	if position >= end {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
 	file.Seek(int64(position), 0)
 	file.Seek(4, 1)
 	timestamp := make([]byte, TIMESTAMP_SIZE)
 	file.Read(timestamp)
-	file.Seek(1, 1)
+	tombstone := make([]byte, TOMBSTONE_SIZE)
+	file.Read(tombstone)
 	keyLen := make([]byte, 8, 8)
 	_, err := file.Read(keyLen)
 	if err != nil {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
 	keyLenNum := binary.LittleEndian.Uint64(keyLen)
 	valLen := make([]byte, 8, 8)
@@ -439,11 +440,11 @@ func FindPrefixSSTableSingle(key string, position uint64, file *os.File) (string
 	value := make([]byte, valLenNum, valLenNum)
 	file.Read(value)
 	if strings.HasPrefix(string(key1), key) {
-		return string(key1), value, timestamp
+		return string(key1), value, timestamp, int(tombstone[0])
 	} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
-	return "", []byte(""), []byte("")
+	return "", []byte(""), []byte(""), -1
 }
 
 func FindAllPrefixRangeSingle(path string, min_prefix string, max_prefix string, summaryBlockingFactor int) (string, uint64) {
@@ -514,13 +515,13 @@ func FindAllPrefixIndexRangeSingle(path string, min_prefix string, max_prefix st
 	return "", 0
 }
 
-func FindPrefixSSTableRangeSingle(min_prefix string, max_prefix string, position uint64, file *os.File) (string, []byte, []byte) {
+func FindPrefixSSTableRangeSingle(min_prefix string, max_prefix string, position uint64, file *os.File) (string, []byte, []byte, int) {
 	file.Seek(8, 0)
 	endBytes := make([]byte, 8)
 	file.Read(endBytes)
 	end := binary.LittleEndian.Uint64(endBytes)
 	if position >= end {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
 
 	file.Seek(int64(position), 0)
@@ -528,7 +529,8 @@ func FindPrefixSSTableRangeSingle(min_prefix string, max_prefix string, position
 		file.Seek(4, 1)
 		timestamp := make([]byte, TIMESTAMP_SIZE)
 		file.Read(timestamp)
-		file.Seek(1, 1)
+		tombstone := make([]byte, TOMBSTONE_SIZE)
+		file.Read(tombstone)
 		keyLen := make([]byte, 8, 8)
 		_, err := file.Read(keyLen)
 		if err != nil {
@@ -543,10 +545,10 @@ func FindPrefixSSTableRangeSingle(min_prefix string, max_prefix string, position
 		value := make([]byte, valLenNum, valLenNum)
 		file.Read(value)
 		if strings.Split(string(key1), "-")[0] <= max_prefix && strings.Split(string(key1), "-")[0] >= min_prefix {
-			return string(key1), value, timestamp
+			return string(key1), value, timestamp, int(tombstone[0])
 		} else if strings.Split(string(key1), "-")[0] > max_prefix {
 			break
 		}
 	}
-	return "", []byte(""), []byte("")
+	return "", []byte(""), []byte(""), -1
 }

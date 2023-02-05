@@ -1,6 +1,7 @@
 package structures
 
 import (
+	"Projekat/global"
 	"encoding/binary"
 	"fmt"
 	"strings"
@@ -20,23 +21,16 @@ type BTree struct {
 }
 
 func CreateTreeNode(parent *TreeNode, key string, val []byte, stat int, timestamp uint64) *TreeNode {
-	keys := make([]string, 2)
-	vals := make([][]byte, 2)
-	status := make([]int, 2)
-	timestamps := make([]uint64, 2)
-	children := make([]*TreeNode, 3)
+	keys := make([]string, global.BTreeN)
+	vals := make([][]byte, global.BTreeN)
+	status := make([]int, global.BTreeN)
+	timestamps := make([]uint64, global.BTreeN)
+	children := make([]*TreeNode, global.BTreeN+1)
 
 	keys[0] = key
-	keys[1] = ""
 	vals[0] = val
-	vals[1] = nil
 	status[0] = stat
-	status[1] = 0
 	timestamps[0] = timestamp
-	timestamps[1] = 0
-	children[0] = nil
-	children[1] = nil
-	children[2] = nil
 	return &TreeNode{keys, vals, status, timestamps, children, parent}
 }
 
@@ -46,7 +40,12 @@ func CreateBTree(key string, val []byte, status int, timestamp uint64) *BTree {
 }
 
 func (node *TreeNode) isLeaf() bool {
-	return node.children[0] == nil && node.children[1] == nil && node.children[2] == nil
+	for i := 0; i < global.BTreeN+1; i++ {
+		if node.children[i] != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (node *TreeNode) isRoot() bool {
@@ -74,6 +73,8 @@ func (btree *BTree) Found(key string) (bool, *SkipListNode, []byte, string) {
 		for i := 0; i < len(node.keys); i++ {
 			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
 				return true, nil, node.vals[i], node.keys[i]
+			} else if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 1 {
+				return true, nil, nil, ""
 			} else if strings.Split(key, "-")[0] < strings.Split(node.keys[i], "-")[0] {
 				if node.isLeaf() {
 					return false, nil, nil, ""
@@ -144,7 +145,7 @@ func (btree *BTree) Add(key string, val []byte, stat int, timestamp uint64) bool
 				node = node.children[i]
 				break
 
-			} else if (i == 0 && strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0] && node.keys[1] == "") || (i == 1 && strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0]) {
+			} else if (i < n-1 && strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0] && node.keys[i+1] == "") || (i == n-1 && strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0]) {
 				if node.isLeaf() {
 					if node.keys[n-1] == "" {
 						//ima mesta u listu za bar jos jedan element
@@ -181,10 +182,54 @@ func (btree *BTree) Add(key string, val []byte, stat int, timestamp uint64) bool
 	}
 }
 
+// raspodeli decu u stari i novi cvor pri podeli cvorova
+// keyp = kljuc cvora koji je otisao na visi nivo
+func AdoptionService(left, right *TreeNode, keyp string) {
+	n := len(left.keys)
+	children := make([]*TreeNode, 0)
+	children = append(children, left.children...)
+	for c := 0; c < n+1; c++ {
+		left.children[c] = nil
+	}
+
+	for c := 0; c < n+1; c++ {
+		if children[c] != nil {
+			k := children[c].keys[0] //primer kljuca iz tog deteta
+			if k < keyp {
+				//ide u levi cvor
+				for q := 0; q < n; q++ {
+					if k < left.keys[q] || left.keys[q] == "" {
+						left.children[q] = children[c]
+						children[c].parent = left
+						break
+					} else if k > left.keys[q] && q == n-1 {
+						left.children[q+1] = children[c]
+						children[c].parent = left
+					}
+				}
+
+			} else {
+				//ide u desni cvor
+				for q := 0; q < n; q++ {
+					if k < right.keys[q] || right.keys[q] == "" {
+						right.children[q] = children[c]
+						children[c].parent = right
+						break
+					} else if k > right.keys[q] && q == n-1 {
+						right.children[q+1] = children[c]
+						children[c].parent = right
+					}
+				}
+			}
+		}
+	}
+}
+
 // podela cvorova
 func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uint64, node *TreeNode) {
 
-	n := len(node.keys) //=2
+	n := len(node.keys)
+	mid := (n + 1) / 2
 
 	all_keys := make([]string, n+1)
 	all_vals := make([][]byte, n+1)
@@ -211,20 +256,30 @@ func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uin
 	//sortirani podaci koji se dele 3 kljuca: drugi u koren, prvi levo, treci desno
 
 	if node.isRoot() {
-		new_root := CreateTreeNode(nil, all_keys[1], all_vals[1], all_stats[1], all_times[1])
+		new_root := CreateTreeNode(nil, all_keys[mid], all_vals[mid], all_stats[mid], all_times[mid])
 
-		right := CreateTreeNode(new_root, all_keys[2], all_vals[2], all_stats[2], all_times[2])
-		right.children[1] = node.children[2]
+		//novi desni cvor i ubaci kljuceve
+		right := CreateTreeNode(new_root, all_keys[mid+1], all_vals[mid+1], all_stats[mid+1], all_times[mid+1])
+		j := 1
+		for i := mid + 2; i < n+1; i++ {
+			right.insertAt(j, all_keys[i], all_vals[i], all_stats[i], all_times[i])
+			j++
+		}
 
 		node.parent = new_root
 		new_root.children[0] = node
 		new_root.children[1] = right
-
-		node.insertAt(0, all_keys[0], all_vals[0], all_stats[0], all_times[0])
-		node.insertAt(1, "", nil, 0, 0)
-		node.children[2] = nil
+		//upise nove kljuceve u stari cvor
+		for i := 0; i < mid; i++ {
+			node.insertAt(i, all_keys[i], all_vals[i], all_stats[i], all_times[i])
+		}
+		for i := mid; i < n; i++ {
+			node.insertAt(i, "", nil, 0, 0)
+		}
 
 		btree.root = new_root
+
+		AdoptionService(node, right, all_keys[mid])
 
 		return
 	}
@@ -233,74 +288,115 @@ func (btree *BTree) NodeDivision(key string, val []byte, stat int, timestamp uin
 	//koliko kljuceva ima node-ov roditelj?
 	parent := node.parent
 	i := 0
-	for ; i < 3; i++ {
+	for ; i < n+1; i++ {
 		if node == parent.children[i] {
 			break
 		}
 	}
 
-	if parent.keys[1] == "" { //ima mesta u roditelju za jos jedan kljuc i jos jedno dete
-		if i == 0 {
-			copy(parent, 1, parent, 0)
-			parent.insertAt(0, all_keys[1], all_vals[1], all_stats[1], all_times[1])
+	if parent.keys[n-1] == "" { //ima mesta u roditelju za jos jedan kljuc i jos jedno dete
 
-			parent.children[2] = parent.children[1]
-
-			sibling := CreateTreeNode(parent, all_keys[2], all_vals[2], all_stats[2], all_times[2])
-			parent.children[1] = sibling
-
-			node.insertAt(0, all_keys[0], all_vals[0], all_stats[0], all_times[0])
-			node.insertAt(1, "", nil, 0, 0)
-
-			sibling.children[1] = node.children[2]
-			node.children[2] = nil
-			//node.children[1] = nil
-
-			return
-
-		} else if i == 1 {
-			node.insertAt(1, "", nil, 0, 0)
-			node.insertAt(0, all_keys[0], all_vals[0], all_stats[0], all_times[0])
-
-			parent.insertAt(1, all_keys[1], all_vals[1], all_stats[1], all_times[1])
-
-			sibling := CreateTreeNode(parent, all_keys[2], all_vals[2], all_stats[2], all_times[2])
-			parent.children[2] = sibling
-
-			sibling.children[1] = node.children[2]
-			node.children[2] = nil
-
-			return
+		//u parent se ubaci all_keys[mid+1] na odgovarajuce mesto i+1
+		for j := n - 1; j > i; j-- {
+			copy(parent, j, parent, j-1)
 		}
+		//deca se pomere koliko i kljucevi i na indeks i+1 se doda novo dete sa kljucem mid+1
+		for j := n; j > i+1; j-- {
+			parent.children[j] = parent.children[j-1]
+		}
+
+		parent.insertAt(i, all_keys[mid], all_vals[mid], all_stats[mid], all_times[mid])
+		//i-to dete = manja polovina, dete i+1 veca polovina (novi cvor)
+
+		//novi desni brat sa kojim deli kljuceve i decu
+		sibling := CreateTreeNode(parent, all_keys[mid+1], all_vals[mid+1], all_stats[mid+1], all_times[mid+1])
+		//popunimo brata drugom polovinom cvorova
+		c := 1
+		for j := mid + 2; j < n+1; j++ {
+			sibling.insertAt(c, all_keys[j], all_vals[j], all_stats[j], all_times[j])
+			c++
+		}
+		parent.children[i+1] = sibling
+
+		//novi kljucevi za node
+		for j := 0; j < mid; j++ {
+			node.insertAt(j, all_keys[j], all_vals[j], all_stats[j], all_times[j])
+		}
+		for j := mid; j < n; j++ {
+			node.insertAt(j, "", nil, 0, 0)
+		}
+		//node ostaje i-to dete
+		//podeli decu cvora koji se deli na node i sibling <<<< ?
+		/*
+			c = 0
+			for j := mid + 1; j < n+1; j++ {
+				if node.children[j] != nil {
+					sibling.children[c] = node.children[j]
+					sibling.children[c].parent = sibling
+					node.children[j] = nil
+					c++
+				}
+			}
+		*/
+		AdoptionService(node, sibling, all_keys[mid])
 
 	} else { //roditelj je maksimalno popunjen, poziva se i za njega, pa se u povratku namestaju deca dole
 
-		btree.NodeDivision(all_keys[1], all_vals[1], all_stats[1], all_times[1], parent)
+		btree.NodeDivision(all_keys[mid], all_vals[mid], all_stats[mid], all_times[mid], parent)
 
+		//ko je roditelj?
 		grand := parent.parent
-
+		for c := 0; c < n+1; c++ {
+			if grand.children[c] != nil {
+				for q := 0; q < n; q++ {
+					if grand.children[c].keys[q] == all_keys[mid] {
+						parent = grand.children[c]
+						c = n + 1
+						break
+					}
+				}
+			}
+		}
+		//ko je brat?
+		var sibling *TreeNode = nil
 		c := 0
-		for ; c < 3; c++ {
-			if grand.children[c] != nil && grand.children[c].keys[0] == all_keys[1] {
-				parent = grand.children[c]
+		for ; c < n+1; c++ {
+			if parent.children[c] == node {
+				sibling = parent.children[c+1]
 				break
 			}
 		}
+		if sibling == nil && c < n+1 {
+			sibling = CreateTreeNode(parent, "", nil, 0, 0)
+			parent.children[c+1] = sibling
+		}
+		//upise kljuceve u desni cvor
+		c = 0
+		for j := mid + 1; j < n+1; j++ {
+			sibling.insertAt(c, all_keys[j], all_vals[j], all_stats[j], all_times[j])
+			c++
+		}
+		//upise nove kljuceve u levi cvor
+		for j := 0; j < mid; j++ {
+			node.insertAt(j, all_keys[j], all_vals[j], all_stats[j], all_times[j])
+		}
+		for j := mid; j < n; j++ {
+			node.insertAt(j, "", nil, 0, 0)
+		}
 
-		// grand.children[c+1].children[0] = grand.children[c].children[1]
-		// grand.children[c+1].children[0].parent = grand.children[c+1]
-
-		//grand.children[c].children[0] = CreateTreeNode(grand.children[c], all_keys[0], all_vals[0], all_stats[0], all_times[0])
-		// grand.children[c].children[1] = CreateTreeNode(grand.children[c], all_keys[2], all_vals[2], all_stats[2], all_times[2])
-
-		parent.children[0] = node
-		node.parent = parent
-		node.insertAt(0, all_keys[0], all_vals[0], all_stats[0], all_times[0])
-		node.insertAt(1, "", nil, 0, 0)
-
-		parent.children[1] = CreateTreeNode(parent, all_keys[2], all_vals[2], all_stats[2], all_times[2])
-		parent.children[1].children[1] = node.children[2]
-		node.children[2] = nil
+		//podeli decu <<<<<<
+		/*
+			c = 0
+			for j := mid + 1; j < n+1; j++ {
+				if node.children[j] != nil {
+					sibling.children[c] = node.children[j]
+					sibling.children[c].parent = sibling
+					node.children[j] = nil
+					c++
+				}
+			}
+		*/
+		AdoptionService(node, sibling, all_keys[mid])
 
 		return
 
@@ -318,6 +414,9 @@ func inorder(node *TreeNode, dubina int) {
 	for i := 0; i < n; i++ {
 		if node.children[i] != nil {
 			inorder(node.children[i], dubina+1)
+		}
+		if node.keys[i] == "" {
+			continue
 		}
 		fmt.Println("(" + node.keys[i] + ", " + fmt.Sprint(dubina) + ")")
 	}
@@ -378,28 +477,28 @@ func (btree *BTree) FindAllPrefix(prefix string, j int) string {
 	return ""
 }
 
-func (btree *BTree) FindTreeNode(key string) ([]byte, uint64) {
+func (btree *BTree) FindTreeNode(key string) ([]byte, uint64, int) {
 	node := btree.root
 	for {
 		//uporedi sa node.keys
 		for i := 0; i < len(node.keys); i++ {
-			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] && node.status[i] == 0 {
-				return node.vals[i], node.timestamps[i]
+			if strings.Split(key, "-")[0] == strings.Split(node.keys[i], "-")[0] {
+				return node.vals[i], node.timestamps[i], node.status[i]
 			} else if strings.Split(key, "-")[0] < strings.Split(node.keys[i], "-")[0] {
 				if node.isLeaf() {
-					return nil, 0
+					return nil, 0, -1
 				}
 				if node.children[i] == nil {
-					return nil, 0
+					return nil, 0, -1
 				}
 				node = node.children[i]
 				break
 			} else if strings.Split(key, "-")[0] > strings.Split(node.keys[i], "-")[0] && i == len(node.keys)-1 {
 				if node.isLeaf() {
-					return nil, 0
+					return nil, 0, -1
 				}
 				if node.children[i+1] == nil {
-					return nil, 0
+					return nil, 0, -1
 				}
 				node = node.children[i+1]
 				break

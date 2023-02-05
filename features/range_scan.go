@@ -136,6 +136,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 		var indices []int
 		var offsets []int64
 		var bestTime uint64
+		var bestStat int
 
 		for i := 0; true; i++ {
 			if global.MemTableDataType == 1 {
@@ -143,12 +144,13 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					best = node.Key
 					best_val = node.Value
 					bestTime = node.Timestamp
+					bestStat = node.Status
 					isMem = true //sta ako u mem nema prefiksa???
 				}
 			} else {
 				best = mem.Data.FindAllPrefixRange(min_prefix, max_prefix, btree_ind)
 				if best != "" {
-					best_val, bestTime = mem.Data.FindTreeNode(best)
+					best_val, bestTime, bestStat = mem.Data.FindTreeNode(best)
 					isMem = true
 				} else {
 					isMem = false
@@ -159,10 +161,12 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 				var key string
 				var val []byte
 				var timeS []byte
+				var tomb int
+
 				if sstableType == 2 {
-					key, val, timeS = structures.FindPrefixSSTableRangeMultiple(min_prefix, max_prefix, positions[j], &files[j])
+					key, val, timeS, tomb = structures.FindPrefixSSTableRangeMultiple(min_prefix, max_prefix, positions[j], &files[j])
 				} else {
-					key, val, timeS = structures.FindPrefixSSTableRangeSingle(min_prefix, max_prefix, positions[j], &files[j])
+					key, val, timeS, tomb = structures.FindPrefixSSTableRangeSingle(min_prefix, max_prefix, positions[j], &files[j])
 				}
 				offset, err := files[j].Seek(0, io.SeekCurrent)
 				if err != nil {
@@ -178,6 +182,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					best_val = val
 					indices = make([]int, 1)
 					offsets = make([]int64, 1)
+					bestStat = tomb
 					indices[0] = j
 					offsets[0] = offset
 					isMem = false
@@ -188,6 +193,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 						best = key
 						best_val = val
 						bestTime = timestamp
+						bestStat = tomb
 					}
 				}
 			}
@@ -209,7 +215,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 			for k := 0; k < len(indices); k++ {
 				positions[indices[k]] = uint64(offsets[k])
 			}
-			if i >= n*(currentPage-1) && i < n*(currentPage) {
+			if i >= n*(currentPage-1) && i < n*(currentPage) && bestStat == 0 {
 				all_keys = append(all_keys, best)
 				all_data = append(all_data, best_val)
 			}

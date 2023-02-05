@@ -22,6 +22,9 @@ func GET(mem *structures.Memtable, cache *structures.LRUCache, bloomf structures
 		if value != nil {
 			WriteFound(new_key, value, wal, mem, &generation, sstableType, precentage, summaryBlockingFactor)
 			return
+		} else {
+			fmt.Println("Ne postoji vrednost sa datim ključem")
+			return
 		}
 	}
 	fmt.Println("Nema mem")

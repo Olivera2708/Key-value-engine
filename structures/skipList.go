@@ -12,7 +12,7 @@ type MemtableData interface {
 	FindAllPrefix(prefix string, j int) string
 	FindAllPrefixRange(min_prefix string, max_prefix string, j int) string
 	GetData() [][][]byte
-	FindTreeNode(key string) ([]byte, uint64)
+	FindTreeNode(key string) ([]byte, uint64, int)
 }
 
 type SkipList struct {
@@ -206,6 +206,6 @@ func (s *SkipList) GetData() [][][]byte { // key, value, tombstone, timestamp
 	return data
 }
 
-func (s *SkipList) FindTreeNode(key string) ([]byte, uint64) {
-	return nil, 0
+func (s *SkipList) FindTreeNode(key string) ([]byte, uint64, int) {
+	return nil, 0, -1
 }

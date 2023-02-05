@@ -54,7 +54,7 @@ func (Memtable *Memtable) Find(key string) (found bool, value []byte, all_key st
 	if found {
 		if global.MemTableDataType == 1 {
 			if skiplist.Status == 1 {
-				return false, nil, ""
+				return true, nil, ""
 			} else {
 				return true, skiplist.Value, skiplist.Key
 			}

@@ -6,3 +6,4 @@ var ResultsNumber int
 var LSMTreeLevel int
 var LSMAlgorithm int
 var LSMMinimum int
+var BTreeN int

@@ -56,6 +56,7 @@ func main() {
 	CMSd := 0.01 // tacnost
 	BFn := 20.0  // broj elemenata
 	BFp := 0.1   //preciznost
+	global.BTreeN = 2
 	configFile, err := ioutil.ReadFile("config/config.json")
 	if err == nil {
 
@@ -84,6 +85,7 @@ func main() {
 		CMSd = float64(payload["CMS"]["d"])
 		BFn = payload["BloomFilter"]["n"]
 		BFp = float64(payload["BloomFilter"]["p"])
+		global.BTreeN = int(payload["BTree"]["n"])
 	}
 
 	//brojanje generacija

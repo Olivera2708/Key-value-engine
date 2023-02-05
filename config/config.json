@@ -10,7 +10,7 @@
     "MemTable": {
         "memTableMaxCap" : 5,    
         "memTableFlush" : 80,
-        "memTableType" : 1
+        "memTableType" : 2
     },
     
     "LRUCache" : {
@@ -49,5 +49,9 @@
     "BloomFilter" : {
         "n" : 20,
         "p" : 0.01
+    },
+
+    "BTree" : {
+        "n" : 2
     }
 }

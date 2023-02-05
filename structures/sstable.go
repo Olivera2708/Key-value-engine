@@ -416,16 +416,17 @@ func FindPrefixIndexMultiple(path string, key string, position uint64) (string, 
 	return "", 0
 }
 
-func FindPrefixSSTableMultiple(key string, position uint64, file *os.File) (string, []byte, []byte) {
+func FindPrefixSSTableMultiple(key string, position uint64, file *os.File) (string, []byte, []byte, int) {
 	file.Seek(int64(position), 0)
 	file.Seek(4, 1)
 	timestamp := make([]byte, TIMESTAMP_SIZE)
 	file.Read(timestamp)
-	file.Seek(1, 1)
+	tombstone := make([]byte, TOMBSTONE_SIZE)
+	file.Read(tombstone)
 	keyLen := make([]byte, 8, 8)
 	_, err := file.Read(keyLen)
 	if err != nil {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
 	keyLenNum := binary.LittleEndian.Uint64(keyLen)
 	valLen := make([]byte, 8, 8)
@@ -436,11 +437,11 @@ func FindPrefixSSTableMultiple(key string, position uint64, file *os.File) (stri
 	value := make([]byte, valLenNum, valLenNum)
 	file.Read(value)
 	if strings.HasPrefix(string(key1), key) {
-		return string(key1), value, timestamp
+		return string(key1), value, timestamp, int(tombstone[0])
 	} else if strings.Split(string(key1), "-")[0] > strings.Split(key, "-")[0] {
-		return "", []byte(""), []byte("")
+		return "", []byte(""), []byte(""), -1
 	}
-	return "", []byte(""), []byte("")
+	return "", []byte(""), []byte(""), -1
 }
 
 func FindAllPrefixRangeMultiple(path string, min_prefix string, max_prefix string) (string, uint64) {
@@ -516,13 +517,14 @@ func FindPrefixIndexRangeMultiple(path string, min_prefix string, max_prefix str
 	return "", 0
 }
 
-func FindPrefixSSTableRangeMultiple(min_prefix string, max_prefix string, position uint64, file *os.File) (string, []byte, []byte) {
+func FindPrefixSSTableRangeMultiple(min_prefix string, max_prefix string, position uint64, file *os.File) (string, []byte, []byte, int) {
 	file.Seek(int64(position), 0)
 	for {
 		file.Seek(4, 1)
 		timestamp := make([]byte, TIMESTAMP_SIZE)
 		file.Read(timestamp)
-		file.Seek(1, 1)
+		tombstone := make([]byte, TOMBSTONE_SIZE)
+		file.Read(tombstone)
 		keyLen := make([]byte, 8, 8)
 		_, err := file.Read(keyLen)
 		if err != nil {
@@ -537,12 +539,12 @@ func FindPrefixSSTableRangeMultiple(min_prefix string, max_prefix string, positi
 		value := make([]byte, valLenNum, valLenNum)
 		file.Read(value)
 		if strings.Split(string(key1), "-")[0] <= max_prefix && strings.Split(string(key1), "-")[0] >= min_prefix {
-			return string(key1), value, timestamp
+			return string(key1), value, timestamp, int(tombstone[0])
 			// all_keys = append(all_keys, string(key1))
 			// all_data = append(all_data, value)
 		} else if strings.Split(string(key1), "-")[0] > max_prefix {
 			break
 		}
 	}
-	return "", []byte(""), []byte("")
+	return "", []byte(""), []byte(""), -1
 }
