@@ -32,6 +32,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 	//u memtable
 	btree_ind := -1
 	mem_key := mem.FindAllPrefix(prefix, &btree_ind)
+	btree_ind--
 	// _, node, _, _ := mem.Data.Found(mem_key)
 
 	//sstable
@@ -115,6 +116,7 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 		var offsets []int64
 		var bestTime uint64
 		var tomb int
+		btree_ind = -1
 
 		for i := 0; true; i++ {
 			if global.MemTableDataType == 1 {
@@ -184,8 +186,8 @@ func LIST(mem *structures.Memtable, sstableType int, summaryBlockingFactor int) 
 					}
 				}
 			} else {
-				if isMem {
-					btree_ind++
+				if !isMem {
+					btree_ind--
 				}
 			}
 			for k := 0; k < len(indices); k++ {

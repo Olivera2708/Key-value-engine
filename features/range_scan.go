@@ -45,7 +45,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 	//u memtable
 	btree_ind := -1
 	mem_key := mem.FindAllPrefixRange(min_prefix, max_prefix, &btree_ind)
-
+	btree_ind--
 	//sstable
 	for lvl := 0; lvl < global.LSMTreeLevel; lvl++ {
 		for i := 0; true; i++ {
@@ -135,6 +135,7 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 		var isMem bool
 		var bestTime uint64
 		var bestStat int
+		btree_ind = 0
 
 		for i := 0; true; i++ {
 			var offsets []int64
@@ -208,9 +209,8 @@ func RANGE_SCAN(mem *structures.Memtable, sstableType int, summaryBlockingFactor
 					}
 				}
 			} else {
-				if isMem {
-					fmt.Println(btree_ind)
-					btree_ind++
+				if !isMem {
+					btree_ind--
 				}
 			}
 			for k := 0; k < len(indices); k++ {

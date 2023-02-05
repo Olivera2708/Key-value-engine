@@ -515,9 +515,8 @@ func (btree *BTree) FindAllPrefixRange(min_prefix string, max_prefix string, j *
 		k := string(data[i][0])
 
 		if min_prefix <= strings.Split(k, "-")[0] && max_prefix >= strings.Split(k, "-")[0] { // data[i][2][0] == 0 &&
-			*j++
+			(*j)++
 			return k
-
 		}
 	}
 	return ""
